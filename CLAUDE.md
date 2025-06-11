@@ -32,7 +32,7 @@ npm run test                 # Run test suite
 ## Technology Stack
 
 - **Frontend:** React 18.2.0 with Next.js 14.0.0 App Router
-- **Language:** TypeScript 5.0.0  
+- **Language:** TypeScript 5.0.0
 - **Styling:** Tailwind CSS 3.3.0 with shadcn/ui components
 - **Icons:** Lucide React 0.294.0 exclusively
 - **Forms:** React Hook Form 7.47.0 with Zod 3.22.0 validation
@@ -42,10 +42,11 @@ npm run test                 # Run test suite
 ## Architecture
 
 ### File Structure
+
 ```
 app/
 ├── (auth)/              # Authentication routes - login, register
-├── (brand)/             # Brand admin routes - dashboard, campaigns, submissions  
+├── (brand)/             # Brand admin routes - dashboard, campaigns, submissions
 ├── (creator)/           # Creator routes - discover, create, portfolio
 ├── api/                 # Mock API routes
 ├── globals.css          # Global styles
@@ -54,7 +55,7 @@ app/
 
 components/
 ├── ui/                  # shadcn/ui base components
-├── forms/               # Form components  
+├── forms/               # Form components
 ├── canvas/              # Drag-and-drop creation canvas
 └── shared/              # Shared components
 
@@ -69,6 +70,7 @@ types/
 ```
 
 ### Core Features
+
 - **User Authentication:** Role-based (Creator vs Brand Admin)
 - **Campaign Management:** Creation, asset kits, timelines for brand admins
 - **Campaign Discovery:** Search and filtering for creators
@@ -77,14 +79,42 @@ types/
 - **Portfolio Management:** Creator showcase of approved works
 
 ### Data Models
+
 - **User:** id, email, role, profile, createdAt
 - **Campaign:** id, title, description, brandId, assets, status, deadline
 - **Submission:** id, campaignId, creatorId, artwork, status, feedback
 - **Asset:** id, campaignId, category (Characters, Backgrounds, Logos, Titles, Props), url, metadata
 
+## Your Core Responsibilities
+
+### 1. Code Quality Standards
+
+- Write clean, maintainable TypeScript code with strict type checking
+- Follow Next.js 14+ best practices and conventions
+- Implement comprehensive error handling and edge case management
+- Maintain consistent code style with ESLint and Prettier compliance
+- Add meaningful JSDoc comments for complex functions and components
+
+### 2. Testing Requirements
+
+- Write unit tests for all utility functions and business logic
+- Create integration tests for API routes and database operations
+- Add component tests for complex UI components
+- Ensure 80%+ test coverage before marking any step complete
+- All tests must pass before proceeding to the next step
+
+### 3. Quality Assurance Process
+
+- **Before coding**: Analyze and plan the implementation approach
+- **During coding**: Validate types, check for build errors, run linters
+- **After coding**: Run full test suite, verify functionality manually
+- **Before committing**: Seek human approval and confirmation
+- **After approval**: Commit changes with descriptive messages
+
 ## Development Guidelines
 
 ### Code Style
+
 - Use TypeScript interfaces for all props and data structures
 - Follow functional components with React Hooks
 - Use Tailwind utility classes (no custom CSS)
@@ -93,6 +123,7 @@ types/
 - Use descriptive variable names, avoid abbreviations
 
 ### Component Patterns
+
 - Place components in appropriate directories (ui/, forms/, canvas/, shared/)
 - Use shadcn/ui component library patterns
 - Implement proper accessibility (ARIA labels, keyboard navigation)
@@ -100,6 +131,7 @@ types/
 - Use Lucide React icons exclusively
 
 ### State Management
+
 - Local state: useState, useReducer
 - Global state: Context API when needed
 - Form state: React Hook Form
@@ -108,6 +140,7 @@ types/
 ## Environment Configuration
 
 Required environment variables:
+
 ```bash
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_API_URL=http://localhost:3000/api
@@ -119,8 +152,9 @@ NEXT_PUBLIC_ALLOWED_FILE_TYPES=image/jpeg,image/png,image/svg+xml
 ## Mock Data Implementation
 
 The application uses mock APIs with placeholder data for demonstrable UX. API endpoints follow REST conventions:
+
 - `GET /api/campaigns` - List campaigns
-- `POST /api/campaigns` - Create campaign  
+- `POST /api/campaigns` - Create campaign
 - `GET /api/campaigns/[id]` - Campaign details
 - `POST /api/submissions` - Submit artwork
 - `PUT /api/submissions/[id]` - Update submission status
