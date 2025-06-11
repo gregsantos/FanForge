@@ -1,0 +1,123 @@
+import { Campaign, Asset, Submission, User } from "@/types"
+
+export const mockUsers: User[] = [
+  {
+    id: "1",
+    email: "maya@example.com",
+    role: "creator",
+    name: "Maya Chen",
+    avatar_url: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=64&h=64&fit=crop&crop=face",
+    created_at: new Date("2024-01-15"),
+    updated_at: new Date("2024-12-01"),
+  },
+  {
+    id: "2",
+    email: "david@example.com",
+    role: "brand_admin",
+    name: "David Rodriguez",
+    avatar_url: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=64&h=64&fit=crop&crop=face",
+    created_at: new Date("2024-01-10"),
+    updated_at: new Date("2024-12-01"),
+  },
+]
+
+export const mockAssets: Asset[] = [
+  {
+    id: "asset-1",
+    campaign_id: "1",
+    filename: "hero-character.png",
+    url: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=200&h=200&fit=crop",
+    category: "characters",
+    metadata: { width: 200, height: 200, file_size: 45000, mime_type: "image/png" },
+    created_at: new Date("2024-11-15"),
+  },
+  {
+    id: "asset-2",
+    campaign_id: "1",
+    filename: "fantasy-background.jpg",
+    url: "https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=400&h=300&fit=crop",
+    category: "backgrounds",
+    metadata: { width: 400, height: 300, file_size: 85000, mime_type: "image/jpeg" },
+    created_at: new Date("2024-11-15"),
+  },
+  {
+    id: "asset-3",
+    campaign_id: "1",
+    filename: "studio-logo.svg",
+    url: "https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=150&h=150&fit=crop",
+    category: "logos",
+    metadata: { width: 150, height: 150, file_size: 12000, mime_type: "image/svg+xml" },
+    created_at: new Date("2024-11-15"),
+  },
+]
+
+export const mockCampaigns: Campaign[] = [
+  {
+    id: "1",
+    title: "Anime Heroes Collection",
+    description: "Create amazing artwork using our official anime character assets. Express your creativity while staying true to our brand aesthetic.",
+    guidelines: "Use provided characters in creative compositions. No violent themes. Maintain character proportions and color schemes. Family-friendly content only.",
+    brand_id: "2",
+    brand_name: "Studio Ghibli",
+    status: "active",
+    deadline: new Date("2025-08-01"),
+    assets: mockAssets,
+    submission_count: 24,
+    created_at: new Date("2024-11-01"),
+    updated_at: new Date("2024-11-15"),
+  },
+  {
+    id: "2",
+    title: "Cyberpunk City Designs",
+    description: "Design futuristic cityscapes using our sci-fi asset collection. Perfect for digital artists interested in cyberpunk aesthetics.",
+    guidelines: "Focus on neon lighting and futuristic architecture. Use dark color palette with bright accent colors. Include our brand elements subtly.",
+    brand_id: "2",
+    brand_name: "NeonCorp Studios",
+    status: "active",
+    deadline: new Date("2025-07-15"),
+    assets: [],
+    submission_count: 12,
+    created_at: new Date("2024-10-15"),
+    updated_at: new Date("2024-11-01"),
+  },
+  {
+    id: "3",
+    title: "Fantasy Realm Adventure",
+    description: "Create magical scenes with our fantasy character and environment assets. Bring mystical worlds to life.",
+    guidelines: "Emphasize magical elements and vibrant colors. Characters should appear heroic and inspiring. Suitable for all ages.",
+    brand_id: "2",
+    brand_name: "Mystic Games",
+    status: "draft",
+    deadline: new Date("2025-09-01"),
+    assets: [],
+    submission_count: 0,
+    created_at: new Date("2024-11-20"),
+    updated_at: new Date("2024-11-20"),
+  },
+]
+
+export const mockSubmissions: Submission[] = [
+  {
+    id: "sub-1",
+    campaign_id: "1",
+    creator_id: "1",
+    title: "Heroes Unite",
+    description: "A dynamic composition featuring the main character in an action pose with mystical background elements.",
+    artwork_url: "https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=400&h=300&fit=crop",
+    status: "approved",
+    feedback: "Excellent composition and use of brand assets. Great attention to character details!",
+    created_at: new Date("2024-11-25"),
+    updated_at: new Date("2024-11-26"),
+  },
+  {
+    id: "sub-2",
+    campaign_id: "1",
+    creator_id: "1",
+    title: "Peaceful Moment",
+    description: "A serene scene showcasing the character in a calm, contemplative setting.",
+    artwork_url: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=300&fit=crop",
+    status: "pending",
+    created_at: new Date("2024-11-28"),
+    updated_at: new Date("2024-11-28"),
+  },
+]
