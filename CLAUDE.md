@@ -59,6 +59,10 @@ components/
 ├── canvas/              # Drag-and-drop creation canvas
 └── shared/              # Shared components
 
+db/
+├── index.ts             # Drizzle setup, schema, queries (server-only)
+├── schema.ts            # Drizzle schema
+
 lib/
 ├── utils.ts             # General utilities
 ├── validations.ts       # Zod validation schemas
@@ -67,7 +71,28 @@ lib/
 
 types/
 └── index.ts             # TypeScript type definitions
+
+utils/
+├── supabase/
+│   ├── client.ts        # Supabase client for client-side use
+│   ├── server.ts        # Supabase client for server-side use
+│   └── middleware.ts    # Supabase middleware for server-side use
+
 ```
+
+### Summary Table
+
+| Directory   | Purpose                                      | Example Contents           |
+| ----------- | -------------------------------------------- | -------------------------- |
+| app/        | Routing, layouts, route handlers             | page.tsx, layout.tsx, api/ |
+| components/ | Shared React components                      | Button.tsx, Navbar.tsx     |
+| db/         | Drizzle setup, schema, queries (server-only) | index.ts, schema.ts        |
+| lib/        | Utilities, helpers                           | utils.ts                   |
+| hooks/      | Custom React hooks                           | useUser.ts                 |
+| styles/     | Global styles                                | globals.css                |
+| types/      | TypeScript types                             | index.ts                   |
+| utils/      | Supabase client, helpers                     | supabase/                  |
+| context/    | React context providers                      | index.ts                   |
 
 ### Core Features
 
@@ -136,6 +161,40 @@ types/
 - Global state: Context API when needed
 - Form state: React Hook Form
 - Data validation: Zod schemas
+
+## Technical Implementation Guidelines
+
+### Database Operations
+
+- Always create/review migrations before schema changes
+- Use Drizzle ORM for type-safe database operations
+- Implement proper indexing for performance
+- Add data validation at the database level
+- Test all database operations with seed data
+
+### API Development
+
+- Follow RESTful conventions for endpoint naming
+- Implement proper HTTP status codes and error responses
+- Add request/response validation using Zod schemas
+- Include rate limiting and security middleware
+- Write comprehensive API documentation
+
+### Frontend Components
+
+- Use TypeScript for all React components with proper typing
+- Implement responsive design with Tailwind CSS
+- Add loading states and error boundaries
+- Ensure accessibility compliance (ARIA, semantic HTML)
+- Test components with React Testing Library
+
+### Authentication & Security
+
+- Use NextAuth.js for authentication flows
+- Implement proper session management
+- Add CSRF protection and input sanitization
+- Validate file uploads and implement size limits
+- Add proper authorization checks for all protected routes
 
 ## Environment Configuration
 
