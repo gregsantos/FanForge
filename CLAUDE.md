@@ -45,27 +45,85 @@ npm run test               # Run Jest test suite
 
 ```
 app/
-├── (auth)/              # Authentication routes - login, register
-├── (brand)/             # Brand admin routes - dashboard, campaigns, submissions
-├── (creator)/           # Creator routes - discover, create, portfolio
-├── api/                 # Mock API routes
-├── globals.css          # Global styles
-├── layout.tsx           # Root layout
-└── page.tsx             # Landing page
-
-components/
-├── ui/                  # shadcn/ui base components
-├── forms/               # Form components
-├── canvas/              # Drag-and-drop creation canvas
-└── shared/              # Shared components
-
-lib/
-├── utils.ts            # Utility functions (cn, etc.)
-├── validations.ts      # Zod schemas for forms/API
-└── mock-data.ts        # Development mock data
-
-types/
-└── index.ts            # Global TypeScript definitions
+.
+├── ai
+│   ├── implementation-plan.md
+│   ├── prioritized-feature-list.md
+│   ├── technical-requirements.md
+│   └── user-stories-checklist.md
+├── app
+│   ├── (auth)
+│   │   ├── login
+│   │   │   └── page.tsx
+│   │   └── register
+│   │       └── page.tsx
+│   ├── (brand)
+│   │   ├── campaigns
+│   │   │   ├── [id]
+│   │   │   │   ├── campaign-detail-client.tsx
+│   │   │   │   └── page.tsx
+│   │   │   └── page.tsx
+│   │   ├── dashboard
+│   │   │   └── page.tsx
+│   │   └── submissions
+│   │       └── page.tsx
+│   ├── (creator)
+│   │   ├── create
+│   │   │   └── page.tsx
+│   │   ├── discover
+│   │   │   ├── [id]
+│   │   │   │   ├── campaign-discover-client.tsx
+│   │   │   │   └── page.tsx
+│   │   │   └── page.tsx
+│   │   └── portfolio
+│   │       └── page.tsx
+│   ├── api
+│   │   ├── auth
+│   │   │   ├── login
+│   │   │   │   └── route.ts
+│   │   │   └── register
+│   │   │       └── route.ts
+│   │   ├── campaigns
+│   │   │   ├── [id]
+│   │   │   │   └── route.ts
+│   │   │   └── route.ts
+│   │   └── submissions
+│   │       └── route.ts
+│   ├── globals.css
+│   ├── layout.tsx
+│   └── page.tsx
+├── CLAUDE.md
+├── components
+│   ├── canvas
+│   │   └── creation-canvas.tsx
+│   ├── shared
+│   │   └── navigation.tsx
+│   └── ui
+│       ├── badge.tsx
+│       ├── button.tsx
+│       ├── card.tsx
+│       └── input.tsx
+├── db
+│   ├── index.tsx
+│   └── schema.tsx
+├── drizzle.config.ts
+├── lib
+│   ├── mock-data.ts
+│   ├── utils.ts
+│   └── validations.ts
+├── next.config.js
+├── package-lock.json
+├── package.json
+├── postcss.config.js
+├── tailwind.config.js
+├── tsconfig.json
+├── types
+│   └── index.ts
+└── utils
+    └── supabase
+        ├── client.ts
+        ├── middleware.ts
+        └── server.ts
 ```
 
 ### Core Features
