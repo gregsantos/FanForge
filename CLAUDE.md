@@ -13,12 +13,12 @@ FanForge is a collaborative platform connecting IP owners with fan creators thro
 npm install                  # Install dependencies
 
 # Development
-npm run dev                 # Start dev server (localhost:3000)
-npm run type-check         # TypeScript validation
-npm run lint               # ESLint checks
-npm run lint:fix           # Auto-fix linting issues
-npm run format             # Format with Prettier
-npm run format:check       # Check formatting
+npm run dev                   # Start development server (http://localhost:3000)
+npm run type-check           # TypeScript type checking
+npm run lint                 # ESLint code quality check
+npm run lint:fix             # Auto-fix linting issues
+npm run format               # Format code with Prettier
+npm run format:check         # Check code formatting
 
 # Build & Deploy
 npm run build              # Production build
@@ -31,54 +31,33 @@ npm run test               # Run Jest test suite
 
 ## Technology Stack
 
-**Core Framework:**
+- **Frontend:** React 18.2.0 with Next.js 14.0.0 App Router
+- **Language:** TypeScript 5.0.0
+- **Styling:** Tailwind CSS 3.3.0 with shadcn/ui components
+- **Icons:** Lucide React 0.294.0 exclusively
+- **Forms:** React Hook Form 7.47.0 with Zod 3.22.0 validation
+- **State:** React Hooks (useState, useReducer, useContext)
+- **Node.js:** 18.17.0+ (recommended 20.9.0)
 
-- Next.js 14.0.0 (App Router)
-- React 18.2.0
-- TypeScript 5.0.0
-- Node.js 18.17.0+ (recommended 20.9.0)
+## Architecture
 
-**UI & Styling:**
-
-- Tailwind CSS 3.3.0
-- shadcn/ui components (Radix UI primitives)
-- Lucide React 0.294.0 (icons only)
-- class-variance-authority + clsx + tailwind-merge
-
-**Forms & Validation:**
-
-- React Hook Form 7.47.0
-- Zod 3.22.0 validation schemas
-- @hookform/resolvers
-
-**Development Tools:**
-
-- ESLint + eslint-config-next
-- Prettier
-- Jest + @testing-library/react
-- Husky (git hooks)
-
-**Build & Deployment:**
-
-- Static export configuration
-- Vercel deployment target
-
-## Architecture & File Structure
+### File Structure
 
 ```
-app/                     # Next.js 14 App Router
-├── (auth)/             # Auth routes: login, register
-├── (brand)/            # Brand admin: dashboard, campaigns, submissions
-├── (creator)/          # Creator routes: discover, create, portfolio
-├── api/                # API routes with mock data
-├── globals.css         # Global Tailwind styles
-├── layout.tsx          # Root layout with providers
-└── page.tsx            # Landing page
+app/
+├── (auth)/              # Authentication routes - login, register
+├── (brand)/             # Brand admin routes - dashboard, campaigns, submissions
+├── (creator)/           # Creator routes - discover, create, portfolio
+├── api/                 # Mock API routes
+├── globals.css          # Global styles
+├── layout.tsx           # Root layout
+└── page.tsx             # Landing page
 
 components/
-├── ui/                 # shadcn/ui base components
-├── canvas/             # Drag-and-drop creation canvas
-└── shared/             # Shared UI components
+├── ui/                  # shadcn/ui base components
+├── forms/               # Form components
+├── canvas/              # Drag-and-drop creation canvas
+└── shared/              # Shared components
 
 lib/
 ├── utils.ts            # Utility functions (cn, etc.)
@@ -89,105 +68,77 @@ types/
 └── index.ts            # Global TypeScript definitions
 ```
 
-## Core Features & Data Models
+### Core Features
 
-**Authentication:** Role-based system (Creator/Brand Admin)
-**Campaigns:** Brand-created content creation opportunities  
-**Submissions:** Creator artwork submissions with review workflow
-**Canvas:** Drag-and-drop composition tool using brand assets
+- **User Authentication:** Role-based (Creator vs Brand Admin)
+- **Campaign Management:** Creation, asset kits, timelines for brand admins
+- **Campaign Discovery:** Search and filtering for creators
+- **Creation Canvas:** Drag-and-drop composition tool using brand assets
+- **Submission Workflow:** Review and approval system
+- **Portfolio Management:** Creator showcase of approved works
 
-**Key Types:**
+### Data Models
 
-```typescript
-User: {
-  id, email, role, profile, createdAt
-}
-Campaign: {
-  id, title, description, brandId, assets, status, deadline
-}
-Submission: {
-  id, campaignId, creatorId, artwork, status, feedback
-}
-Asset: {
-  id, campaignId, category, url, metadata
-}
-```
+- **User:** id, email, role, profile, createdAt
+- **Campaign:** id, title, description, brandId, assets, status, deadline
+- **Submission:** id, campaignId, creatorId, artwork, status, feedback
+- **Asset:** id, campaignId, category (Characters, Backgrounds, Logos, Titles, Props), url, metadata
 
 ## AI Coding Guidelines
 
-### Code Quality Requirements
+### 1. Code Quality Standards
 
-- TypeScript strict mode with comprehensive type definitions
-- Next.js 14 App Router best practices and conventions
-- ESLint + Prettier compliance (run `npm run lint:fix` and `npm run format`)
-- Functional components with React Hooks only
-- Error boundaries and comprehensive error handling
+- Write clean, maintainable TypeScript code with strict type checking
+- Follow Next.js 14+ best practices and conventions
+- Implement comprehensive error handling and edge case management
+- Maintain consistent code style with ESLint and Prettier compliance
+- Add meaningful JSDoc comments for complex functions and components
 
-### Code Style Standards
+### 2. Testing Requirements
 
-```typescript
-// Import order: react → next → libraries → local
-import { useState } from 'react'
-import { NextPage } from 'next'
-import { Button } from '@/components/ui/button'
-import { validateForm } from '@/lib/validations'
+- Write unit tests for all utility functions and business logic
+- Create integration tests for API routes and database operations
+- Add component tests for complex UI components
+- Ensure 80%+ test coverage before marking any step complete
+- All tests must pass before proceeding to the next step
 
-// Always use interfaces, destructure props, annotate returns
-interface Props { title: string; onClick: () => void }
-const Component = ({ title, onClick }: Props): JSX.Element => {
-  // Arrow functions, descriptive names, no abbreviations
-  const handleSubmission = () => onClick()
-  return <Button onClick={handleSubmission}>{title}</Button>
-}
-```
+### 3. Quality Assurance Process
 
-### Component Development
+- **Before coding**: Analyze and plan the implementation approach
+- **During coding**: Validate types, check for build errors, run linters
+- **After coding**: Run full test suite, verify functionality manually
+- **Before committing**: Seek human approval and confirmation
+- **After approval**: Commit changes with descriptive messages
 
-- **UI Components:** Use shadcn/ui primitives exclusively
-- **Styling:** Tailwind utilities only, mobile-first responsive design
-- **Icons:** Lucide React only (`import { Icon } from 'lucide-react'`)
-- **Forms:** React Hook Form + Zod validation schemas
-- **State:** Local useState/useReducer, Context for global state
-- **Accessibility:** ARIA labels, keyboard navigation, semantic HTML
+## Development Guidelines
 
-### Testing Requirements
+### Code Style
 
-- Jest + React Testing Library for component tests
-- Unit tests for utilities and business logic
-- API route testing with mock data
-- Run `npm run test` before committing
-- Target 80%+ coverage for new code
+- Use TypeScript interfaces for all props and data structures
+- Follow functional components with React Hooks
+- Use Tailwind utility classes (no custom CSS)
+- Implement responsive design with mobile-first approach
+- Support dark mode using `dark:` prefix classes
+- Use descriptive variable names, avoid abbreviations
 
-### File Placement Rules
+### Component Patterns
 
-```
-components/ui/       → shadcn/ui base components
-components/shared/   → Reusable business components
-components/canvas/   → Creation tool specific components
-lib/                → Utilities, validations, API helpers
-types/              → Global TypeScript definitions
-app/api/            → API routes with mock implementations
-```
+- Place components in appropriate directories (ui/, forms/, canvas/, shared/)
+- Use shadcn/ui component library patterns
+- Implement proper accessibility (ARIA labels, keyboard navigation)
+- Validate forms with React Hook Form + Zod schemas
+- Use Lucide React icons exclusively
 
-## API & Mock Data
+### State Management
 
-**Mock Implementation:** All API routes use placeholder data for development/demo purposes
+- Local state: useState, useReducer
+- Global state: Context API when needed
+- Form state: React Hook Form
+- Data validation: Zod schemas
 
-**REST Endpoints:**
+## Environment Configuration
 
-```http
-GET    /api/campaigns        → List all campaigns
-POST   /api/campaigns        → Create new campaign
-GET    /api/campaigns/[id]   → Campaign details
-POST   /api/submissions      → Submit creator artwork
-PUT    /api/submissions/[id] → Update submission status
-GET    /api/auth/login       → User authentication
-POST   /api/auth/register    → User registration
-```
-
-## Environment & Configuration
-
-**Development Environment:**
+Required environment variables:
 
 ```bash
 NEXT_PUBLIC_APP_URL=http://localhost:3000
@@ -207,49 +158,13 @@ NEXT_PUBLIC_ALLOWED_FILE_TYPES=image/jpeg,image/png,image/svg+xml
 
 **Targets:**
 
-- First Contentful Paint: < 1.5s
-- Largest Contentful Paint: < 2.5s
-- Chrome 90+, Firefox 88+, Safari 14+, Edge 90+
+- First Contentful Paint: < 1.5 seconds
+- Largest Contentful Paint: < 2.5 seconds
+- Browser support: Chrome 90+, Firefox 88+, Safari 14+, Edge 90+
+- Responsive breakpoints: Mobile (320-767px), Tablet (768-1023px), Desktop (1024px+)
 
-**Responsive Breakpoints:**
+## Deployment
 
-- Mobile: 320-767px
-- Tablet: 768-1023px
-- Desktop: 1024px+
-
-## Deployment & Security
-
-**Platform:** Vercel with static export
-
-**Security:** Input validation on API routes, HTTPS cookies, route protection middleware
-
-## AI Development Workflow
-
-**Pre-coding Analysis:**
-
-1. Understand requirements and existing codebase patterns
-2. Check related components and utilities for consistency
-3. Plan implementation approach with proper TypeScript types
-
-**During Development:**
-
-1. Follow file placement rules and naming conventions
-2. Run `npm run type-check` frequently during development
-3. Use existing shadcn/ui components and Tailwind patterns
-4. Implement proper error handling and loading states
-
-**Quality Assurance:**
-
-1. Run `npm run lint:fix` and `npm run format` before completion
-2. Execute `npm run test` and ensure tests pass
-3. Verify functionality in browser manually
-4. Check mobile/tablet responsive behavior
-
-**Pre-commit Checklist:**
-
-- [ ] TypeScript compilation succeeds (`npm run type-check`)
-- [ ] Linting passes (`npm run lint`)
-- [ ] Formatting is consistent (`npm run format:check`)
-- [ ] Tests pass (`npm run test`)
-- [ ] No console errors in browser
-- [ ] Responsive design works across breakpoints
+- Target platform: Vercel (static export)
+- Next.js configuration includes `output: "export"` and `trailingSlash: true`
+- Images use `unoptimized: true` for static hosting compatibility
