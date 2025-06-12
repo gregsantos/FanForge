@@ -1,3 +1,5 @@
+# FanForge App - Comprehensive User Stories Checklist
+
 ## Must-Haves (P0) - Core MVP User Stories
 
 ### 1. Authentication & User Management
