@@ -154,7 +154,7 @@ export default function BrandCampaignsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {mockCampaigns.reduce((total, campaign) => total + campaign.submission_count, 0)}
+              {mockCampaigns.reduce((total, campaign) => total + (campaign.submissionCount || 0), 0)}
             </div>
             <p className="text-xs text-muted-foreground">
               All campaigns
@@ -190,12 +190,12 @@ export default function BrandCampaignsPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Brand:</span>
-                  <span className="font-medium">{campaign.brand_name}</span>
+                  <span className="font-medium">{campaign.brand?.name}</span>
                 </div>
                 
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Submissions:</span>
-                  <span className="font-medium">{campaign.submission_count}</span>
+                  <span className="font-medium">{campaign.submissionCount}</span>
                 </div>
                 
                 <div className="flex items-center justify-between text-sm">
@@ -206,7 +206,7 @@ export default function BrandCampaignsPage() {
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Deadline:</span>
                   <span className="font-medium">
-                    {campaign.deadline.toLocaleDateString()}
+                    {campaign.endDate ? campaign.endDate.toLocaleDateString() : 'No deadline'}
                   </span>
                 </div>
               </div>

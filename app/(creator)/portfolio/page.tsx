@@ -11,7 +11,8 @@ import {
   Calendar, 
   CheckCircle, 
   Clock, 
-  XCircle, 
+  XCircle,
+  MinusCircle, 
   Download, 
   Share2,
   Trophy,
@@ -43,6 +44,11 @@ export default function PortfolioPage() {
       icon: XCircle, 
       variant: "destructive" as const, 
       label: "Changes Requested" 
+    },
+    withdrawn: {
+      icon: MinusCircle,
+      variant: "secondary" as const,
+      label: "Withdrawn"
     },
   }
 
@@ -167,7 +173,7 @@ export default function PortfolioPage() {
               <Card key={submission.id} className="group overflow-hidden">
                 <div className="aspect-video relative overflow-hidden">
                   <img
-                    src={submission.artwork_url}
+                    src={submission.artworkUrl}
                     alt={submission.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                   />
@@ -208,7 +214,7 @@ export default function PortfolioPage() {
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <Calendar className="h-4 w-4" />
-                      <span>{formatTimeAgo(submission.created_at)}</span>
+                      <span>{submission.createdAt ? formatTimeAgo(submission.createdAt) : 'Unknown'}</span>
                     </div>
                     <Badge variant="outline">Campaign #1</Badge>
                   </div>

@@ -19,7 +19,7 @@ export default function DiscoverPage() {
   const filteredCampaigns = campaigns.filter(campaign => {
     const matchesSearch = campaign.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          campaign.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         campaign.brand_name.toLowerCase().includes(searchQuery.toLowerCase())
+                         campaign.brand?.name?.toLowerCase().includes(searchQuery.toLowerCase())
     
     return matchesSearch
   })
@@ -86,7 +86,7 @@ export default function DiscoverPage() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
-                      <Badge variant="secondary">{campaign.brand_name}</Badge>
+                      <Badge variant="secondary">{campaign.brand?.name}</Badge>
                       <Badge variant="outline" className="text-xs">
                         {campaign.status}
                       </Badge>
@@ -110,10 +110,10 @@ export default function DiscoverPage() {
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-1">
                       <Users className="h-4 w-4" />
-                      <span>{campaign.submission_count} submissions</span>
+                      <span>{campaign.submissionCount} submissions</span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <Image className="h-4 w-4" />
+                      <Image className="h-4 w-4" aria-hidden="true" />
                       <span>{campaign.assets.length} assets</span>
                     </div>
                   </div>
@@ -123,7 +123,7 @@ export default function DiscoverPage() {
                 <div className="flex items-center gap-2 text-sm">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
                   <span className="text-muted-foreground">Deadline:</span>
-                  <span className="font-medium">{formatDate(campaign.deadline)}</span>
+                  <span className="font-medium">{formatDate(campaign.endDate)}</span>
                 </div>
 
                 {/* Asset Preview */}

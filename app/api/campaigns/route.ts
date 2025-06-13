@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     filteredCampaigns = filteredCampaigns.filter(campaign =>
       campaign.title.toLowerCase().includes(searchLower) ||
       campaign.description.toLowerCase().includes(searchLower) ||
-      campaign.brand_name.toLowerCase().includes(searchLower)
+      (campaign.brand?.name?.toLowerCase().includes(searchLower) || false)
     )
   }
 
@@ -35,11 +35,11 @@ export async function GET(request: NextRequest) {
       id: campaign.id,
       title: campaign.title,
       description: campaign.description,
-      brand_name: campaign.brand_name,
+      brand_name: campaign.brand.name,
       status: campaign.status,
-      deadline: campaign.deadline,
+      deadline: campaign.endDate,
       asset_count: campaign.assets.length,
-      submission_count: campaign.submission_count,
+      submission_count: campaign.submissionCount || 0,
       thumbnail_url: campaign.assets[0]?.url || "https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=400&h=300&fit=crop",
     })),
     pagination: {

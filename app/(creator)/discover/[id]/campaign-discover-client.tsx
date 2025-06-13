@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { mockSubmissions } from "@/lib/mock-data"
-import { Campaign } from "@/types"
+import { CampaignWithAssets } from "@/types"
 import { 
   Calendar, 
   Users, 
@@ -23,13 +23,13 @@ import {
 import Link from "next/link"
 
 interface CampaignDiscoverClientProps {
-  campaign: Campaign
+  campaign: CampaignWithAssets
 }
 
 export function CampaignDiscoverClient({ campaign }: CampaignDiscoverClientProps) {
   const [isLiked, setIsLiked] = useState(false)
   
-  const campaignSubmissions = mockSubmissions.filter(s => s.campaign_id === campaign.id)
+  const campaignSubmissions = mockSubmissions.filter(s => s.campaignId === campaign.id)
   const approvedSubmissions = campaignSubmissions.filter(s => s.status === "approved")
 
   const getStatusColor = (status: string) => {
@@ -46,8 +46,9 @@ export function CampaignDiscoverClient({ campaign }: CampaignDiscoverClientProps
   }
 
   const getDaysUntilDeadline = () => {
+    if (!campaign.endDate) return 0
     const today = new Date()
-    const deadline = new Date(campaign.deadline)
+    const deadline = new Date(campaign.endDate)
     const diffTime = deadline.getTime() - today.getTime()
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
     return diffDays
@@ -68,7 +69,7 @@ export function CampaignDiscoverClient({ campaign }: CampaignDiscoverClientProps
             </Badge>
           </div>
           <p className="text-muted-foreground">
-            By {campaign.brand_name}
+            By {campaign.brand?.name}
           </p>
         </div>
         <div className="flex gap-2">
@@ -106,7 +107,7 @@ export function CampaignDiscoverClient({ campaign }: CampaignDiscoverClientProps
                   Only {daysLeft} days left to participate!
                 </h3>
                 <p className="text-sm text-orange-700">
-                  This campaign ends on {campaign.deadline.toLocaleDateString()}.
+                  This campaign ends on {campaign.endDate ? campaign.endDate.toLocaleDateString() : 'No deadline set'}.
                 </p>
               </div>
             </div>
@@ -122,7 +123,7 @@ export function CampaignDiscoverClient({ campaign }: CampaignDiscoverClientProps
               <div>
                 <h3 className="font-medium text-gray-800">Campaign Closed</h3>
                 <p className="text-sm text-gray-700">
-                  This campaign ended on {campaign.deadline.toLocaleDateString()}. Check out other active campaigns!
+                  This campaign ended on {campaign.endDate ? campaign.endDate.toLocaleDateString() : 'an unknown date'}. Check out other active campaigns!
                 </p>
               </div>
             </div>
@@ -203,7 +204,7 @@ export function CampaignDiscoverClient({ campaign }: CampaignDiscoverClientProps
                 </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
-                  <Image className="mx-auto h-8 w-8 mb-2" />
+                  <Image className="mx-auto h-8 w-8 mb-2" aria-hidden="true" />
                   <p className="text-sm">Assets will be available when the campaign becomes active</p>
                 </div>
               )}
@@ -232,7 +233,7 @@ export function CampaignDiscoverClient({ campaign }: CampaignDiscoverClientProps
                     <div key={submission.id} className="group">
                       <div className="aspect-video bg-muted rounded-lg overflow-hidden mb-3">
                         <img
-                          src={submission.artwork_url}
+                          src={submission.artworkUrl}
                           alt={submission.title}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                         />
@@ -240,7 +241,7 @@ export function CampaignDiscoverClient({ campaign }: CampaignDiscoverClientProps
                       <div className="space-y-1">
                         <h3 className="font-medium">{submission.title}</h3>
                         <p className="text-sm text-muted-foreground">
-                          By Creator {submission.creator_id}
+                          By Creator {submission.creatorId}
                         </p>
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="text-xs">
@@ -282,7 +283,7 @@ export function CampaignDiscoverClient({ campaign }: CampaignDiscoverClientProps
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Deadline</span>
                   <span className="text-sm font-medium">
-                    {campaign.deadline.toLocaleDateString()}
+                    {campaign.endDate ? campaign.endDate.toLocaleDateString() : 'No deadline'}
                   </span>
                 </div>
 
@@ -295,7 +296,7 @@ export function CampaignDiscoverClient({ campaign }: CampaignDiscoverClientProps
 
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Participants</span>
-                  <span className="text-sm font-medium">{campaign.submission_count}</span>
+                  <span className="text-sm font-medium">{campaign.submissionCount}</span>
                 </div>
 
                 <div className="flex justify-between items-center">
@@ -323,7 +324,7 @@ export function CampaignDiscoverClient({ campaign }: CampaignDiscoverClientProps
                   </Button>
                 </Link>
                 <p className="text-xs text-center text-muted-foreground">
-                  Join {campaign.submission_count} other creators in this campaign
+                  Join {campaign.submissionCount} other creators in this campaign
                 </p>
               </CardContent>
             </Card>
@@ -332,23 +333,23 @@ export function CampaignDiscoverClient({ campaign }: CampaignDiscoverClientProps
           {/* Brand Info */}
           <Card>
             <CardHeader>
-              <CardTitle>About {campaign.brand_name}</CardTitle>
+              <CardTitle>About {campaign.brand?.name}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="text-sm space-y-2">
                 <p className="text-muted-foreground">
-                  This campaign is officially sponsored by {campaign.brand_name}. 
+                  This campaign is officially sponsored by {campaign.brand?.name}. 
                   All submissions will be reviewed by their creative team.
                 </p>
               </div>
               <div className="pt-2 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Campaign Created</span>
-                  <span>{campaign.created_at.toLocaleDateString()}</span>
+                  <span>{campaign.createdAt ? campaign.createdAt.toLocaleDateString() : 'Unknown'}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Last Updated</span>
-                  <span>{campaign.updated_at.toLocaleDateString()}</span>
+                  <span>{campaign.updatedAt ? campaign.updatedAt.toLocaleDateString() : 'Unknown'}</span>
                 </div>
               </div>
             </CardContent>

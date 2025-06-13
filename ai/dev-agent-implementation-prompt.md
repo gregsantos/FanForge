@@ -124,7 +124,7 @@ This will help me implement the optimal solution.
 ### Database Operations
 
 - Always create/review migrations before schema changes
-- Use Prisma client for type-safe database operations
+- Use Drizzle ORM for type-safe database operations
 - Implement proper indexing for performance
 - Add data validation at the database level
 - Test all database operations with seed data

@@ -59,7 +59,7 @@ export function CreationCanvas({ assets, campaignTitle, onSave }: CreationCanvas
 
       const newElement: CanvasElement = {
         id: generateId(),
-        asset,
+        assetId: asset.id,
         x: Math.max(0, x - 50),
         y: Math.max(0, y - 50),
         width: 100,
@@ -90,6 +90,10 @@ export function CreationCanvas({ assets, campaignTitle, onSave }: CreationCanvas
 
   const selectedElementData = selectedElement 
     ? elements.find(el => el.id === selectedElement)
+    : null
+  
+  const selectedAsset = selectedElementData 
+    ? assets.find(a => a.id === selectedElementData.assetId)
     : null
 
   const handleSave = () => {
@@ -221,33 +225,38 @@ export function CreationCanvas({ assets, campaignTitle, onSave }: CreationCanvas
               </div>
             )}
             
-            {elements.map(element => (
-              <div
-                key={element.id}
-                className={`canvas-element absolute ${
-                  selectedElement === element.id ? 'selected' : ''
-                }`}
-                style={{
-                  left: element.x,
-                  top: element.y,
-                  width: element.width,
-                  height: element.height,
-                  transform: `rotate(${element.rotation}deg)`,
-                  zIndex: element.zIndex,
-                }}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setSelectedElement(element.id)
-                }}
-              >
-                <img
-                  src={element.asset.url}
-                  alt={element.asset.filename}
-                  className="w-full h-full object-cover pointer-events-none"
-                  draggable={false}
-                />
-              </div>
-            ))}
+            {elements.map(element => {
+              const asset = assets.find(a => a.id === element.assetId)
+              if (!asset) return null
+              
+              return (
+                <div
+                  key={element.id}
+                  className={`canvas-element absolute ${
+                    selectedElement === element.id ? 'selected' : ''
+                  }`}
+                  style={{
+                    left: element.x,
+                    top: element.y,
+                    width: element.width,
+                    height: element.height,
+                    transform: `rotate(${element.rotation}deg)`,
+                    zIndex: element.zIndex,
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setSelectedElement(element.id)
+                  }}
+                >
+                  <img
+                    src={asset.url}
+                    alt={asset.filename}
+                    className="w-full h-full object-cover pointer-events-none"
+                    draggable={false}
+                  />
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>
@@ -268,10 +277,10 @@ export function CreationCanvas({ assets, campaignTitle, onSave }: CreationCanvas
               <div>
                 <h3 className="font-medium mb-2">Selected Element</h3>
                 <p className="text-sm text-muted-foreground mb-2">
-                  {selectedElementData.asset.filename}
+                  {selectedAsset?.filename}
                 </p>
                 <Badge variant="outline">
-                  {selectedElementData.asset.category}
+                  {selectedAsset?.category}
                 </Badge>
               </div>
 
@@ -377,26 +386,29 @@ export function CreationCanvas({ assets, campaignTitle, onSave }: CreationCanvas
             <div className="space-y-1 max-h-40 overflow-y-auto">
               {elements
                 .sort((a, b) => b.zIndex - a.zIndex)
-                .map((element) => (
-                <div
-                  key={element.id}
-                  className={`p-2 rounded border cursor-pointer transition-colors ${
-                    selectedElement === element.id 
-                      ? 'border-primary bg-primary/5' 
-                      : 'border-border hover:bg-muted'
-                  }`}
-                  onClick={() => setSelectedElement(element.id)}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm truncate">
-                      {element.asset.filename}
-                    </span>
-                    <Badge variant="outline" className="text-xs">
-                      {element.zIndex}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
+                .map((element) => {
+                  const asset = assets.find(a => a.id === element.assetId)
+                  return (
+                    <div
+                      key={element.id}
+                      className={`p-2 rounded border cursor-pointer transition-colors ${
+                        selectedElement === element.id 
+                          ? 'border-primary bg-primary/5' 
+                          : 'border-border hover:bg-muted'
+                      }`}
+                      onClick={() => setSelectedElement(element.id)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm truncate">
+                          {asset?.filename || 'Unknown'}
+                        </span>
+                        <Badge variant="outline" className="text-xs">
+                          {element.zIndex}
+                        </Badge>
+                      </div>
+                    </div>
+                  )
+                })}
             </div>
           </div>
         </CardContent>

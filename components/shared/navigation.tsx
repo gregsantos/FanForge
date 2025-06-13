@@ -3,13 +3,13 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { User } from "@/types"
+import { User, LegacyUser } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Menu, X, Palette, Search, User as UserIcon, BarChart3, FileText, Eye } from "lucide-react"
 import { useState } from "react"
 
 interface NavigationProps {
-  user?: User
+  user?: LegacyUser
 }
 
 export function Navigation({ user }: NavigationProps) {

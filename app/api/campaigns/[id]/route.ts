@@ -29,10 +29,10 @@ export async function GET(
       title: campaign.title,
       description: campaign.description,
       guidelines: campaign.guidelines,
-      brand_name: campaign.brand_name,
+      brand_name: campaign.brand?.name,
       status: campaign.status,
-      deadline: campaign.deadline,
-      created_at: campaign.created_at,
+      deadline: campaign.endDate,
+      created_at: campaign.createdAt,
       assets: campaign.assets.map(asset => ({
         id: asset.id,
         filename: asset.filename,
