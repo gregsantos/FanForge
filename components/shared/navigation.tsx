@@ -4,27 +4,31 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
+import { UserDropdown } from "@/components/shared/user-dropdown"
 import { useAuth } from "@/lib/contexts/auth"
 import { Menu, X, Palette, Search, User as UserIcon, BarChart3, FileText, Eye } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect, useMemo } from "react"
+import { useRouter } from "next/navigation"
 
 export function Navigation() {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { user, signOut, loading } = useAuth()
+  const router = useRouter()
 
-  const creatorLinks = [
+  const creatorLinks = useMemo(() => [
     { href: "/discover", label: "Discover", icon: Search },
     { href: "/create", label: "Create", icon: Palette },
     { href: "/portfolio", label: "My Work", icon: FileText },
     { href: "/profile", label: "Profile", icon: UserIcon },
-  ]
+  ], [])
 
-  const brandLinks = [
+  const brandLinks = useMemo(() => [
     { href: "/dashboard", label: "Dashboard", icon: BarChart3 },
     { href: "/campaigns", label: "Campaigns", icon: FileText },
     { href: "/submissions", label: "Reviews", icon: Eye },
-  ]
+  ], [])
 
   const links = user?.role === "creator" ? creatorLinks : brandLinks
 
@@ -37,9 +41,57 @@ export function Navigation() {
     }
   }
 
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Only trigger on Alt + key to avoid conflicts
+      if (!event.altKey || !user) return
+
+      const key = event.key.toLowerCase()
+      const links = user.role === "creator" ? creatorLinks : brandLinks
+
+      switch (key) {
+        case 'd':
+          event.preventDefault()
+          router.push(user.role === "creator" ? "/discover" : "/dashboard")
+          break
+        case 'c':
+          event.preventDefault()
+          router.push(user.role === "creator" ? "/create" : "/campaigns")
+          break
+        case 'p':
+          event.preventDefault()
+          if (user.role === "creator") {
+            router.push("/portfolio")
+          }
+          break
+        case 's':
+          event.preventDefault()
+          if (user.role === "brand_admin") {
+            router.push("/submissions")
+          }
+          break
+        case 'escape':
+          setMobileMenuOpen(false)
+          break
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [user, router, creatorLinks, brandLinks])
+
   return (
-    <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <>
+      {/* Skip to content link for accessibility */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-primary text-primary-foreground px-4 py-2 rounded-md z-50"
+      >
+        Skip to main content
+      </a>
+      <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 justify-between">
           <div className="flex">
             <Link href="/" className="flex items-center">
@@ -68,6 +120,7 @@ export function Navigation() {
           </div>
 
           <div className="flex items-center space-x-4">
+            <ThemeToggle />
             {!user ? (
               <div className="hidden md:flex md:space-x-2">
                 <Link href="/login">
@@ -78,13 +131,8 @@ export function Navigation() {
                 </Link>
               </div>
             ) : (
-              <div className="hidden md:flex md:items-center md:space-x-4">
-                <span className="text-sm text-muted-foreground">
-                  Welcome, {user.displayName || user.email}
-                </span>
-                <Button variant="outline" size="sm" onClick={handleSignOut} disabled={loading}>
-                  Sign Out
-                </Button>
+              <div className="hidden md:flex md:items-center">
+                <UserDropdown />
               </div>
             )}
 
@@ -94,6 +142,8 @@ export function Navigation() {
                 variant="ghost"
                 size="icon"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+                aria-expanded={mobileMenuOpen}
               >
                 {mobileMenuOpen ? (
                   <X className="h-6 w-6" />
@@ -152,6 +202,7 @@ export function Navigation() {
           </div>
         </div>
       )}
-    </nav>
+      </nav>
+    </>
   )
 }

@@ -1,8 +1,11 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton"
+import { ErrorBoundary } from "@/components/ui/error-boundary"
 import { mockCampaigns, mockSubmissions } from "@/lib/mock-data"
 import { 
   BarChart3, 
@@ -17,10 +20,25 @@ import {
 import Link from "next/link"
 
 export default function BrandDashboardPage() {
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    // Simulate loading data
+    const timer = setTimeout(() => {
+      setLoading(false)
+    }, 1500)
+
+    return () => clearTimeout(timer)
+  }, [])
+
   const activeCampaigns = mockCampaigns.filter(c => c.status === "active")
   const totalSubmissions = mockSubmissions.length
   const pendingSubmissions = mockSubmissions.filter(s => s.status === "pending").length
   const approvedSubmissions = mockSubmissions.filter(s => s.status === "approved").length
+
+  if (loading) {
+    return <DashboardSkeleton />
+  }
 
   const stats = [
     {
@@ -76,30 +94,33 @@ export default function BrandDashboardPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {stats.map((stat) => (
-          <Card key={stat.title}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {stat.title}
-              </CardTitle>
-              <div className={`p-2 rounded-lg ${stat.bgColor}`}>
-                <stat.icon className={`h-4 w-4 ${stat.color}`} />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-              <p className="text-xs text-muted-foreground">
-                {stat.description}
-              </p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <ErrorBoundary>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {stats.map((stat) => (
+            <Card key={stat.title}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {stat.title}
+                </CardTitle>
+                <div className={`p-2 rounded-lg ${stat.bgColor}`}>
+                  <stat.icon className={`h-4 w-4 ${stat.color}`} />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stat.value}</div>
+                <p className="text-xs text-muted-foreground">
+                  {stat.description}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </ErrorBoundary>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Recent Campaigns */}
-        <Card>
+      <ErrorBoundary>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Recent Campaigns */}
+          <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
@@ -220,10 +241,12 @@ export default function BrandDashboardPage() {
             )}
           </CardContent>
         </Card>
-      </div>
+        </div>
+      </ErrorBoundary>
 
       {/* Quick Actions */}
-      <Card className="mt-8">
+      <ErrorBoundary>
+        <Card className="mt-8">
         <CardHeader>
           <CardTitle>Quick Actions</CardTitle>
           <CardDescription>
@@ -252,7 +275,8 @@ export default function BrandDashboardPage() {
             </Link>
           </div>
         </CardContent>
-      </Card>
+        </Card>
+      </ErrorBoundary>
     </div>
   )
 }
