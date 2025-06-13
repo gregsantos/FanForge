@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { UserDropdown } from "@/components/shared/user-dropdown"
 import { useAuth } from "@/lib/contexts/auth"
-import { Menu, X, Palette, Search, User as UserIcon, BarChart3, FileText, Eye } from "lucide-react"
+import { Menu, X, Palette, Search, User as UserIcon, BarChart3, FileText, Eye, Image } from "lucide-react"
 import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 
@@ -27,6 +27,7 @@ export function Navigation() {
   const brandLinks = useMemo(() => [
     { href: "/dashboard", label: "Dashboard", icon: BarChart3 },
     { href: "/campaigns", label: "Campaigns", icon: FileText },
+    { href: "/assets", label: "Assets", icon: Image },
     { href: "/submissions", label: "Reviews", icon: Eye },
   ], [])
 
@@ -58,6 +59,12 @@ export function Navigation() {
         case 'c':
           event.preventDefault()
           router.push(user.role === "creator" ? "/create" : "/campaigns")
+          break
+        case 'a':
+          event.preventDefault()
+          if (user.role === "brand_admin") {
+            router.push("/assets")
+          }
           break
         case 'p':
           event.preventDefault()
