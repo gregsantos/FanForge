@@ -49,7 +49,7 @@ app/
 ├── ai
 │   ├── implementation-plan.md
 │   ├── prioritized-feature-list.md
-│   ├── technical-requirements.md
+│   ├── technical-requirements.xml
 │   └── user-stories-checklist.md
 ├── app
 │   ├── (auth)
@@ -104,8 +104,8 @@ app/
 │       ├── card.tsx
 │       └── input.tsx
 ├── db
-│   ├── index.tsx
-│   └── schema.tsx
+│   ├── index.ts
+│   └── schema.ts
 ├── drizzle.config.ts
 ├── lib
 │   ├── mock-data.ts
