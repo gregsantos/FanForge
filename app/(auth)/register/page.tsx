@@ -3,19 +3,23 @@
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { registerSchema } from "@/lib/validations"
+import { useAuth } from "@/lib/contexts/auth"
 import { Palette, BarChart3 } from "lucide-react"
 import type { z } from "zod"
 
 type RegisterForm = z.infer<typeof registerSchema>
 
 export default function RegisterPage() {
-  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string>("")
+  const { signUp, loading } = useAuth()
+  const router = useRouter()
 
   const {
     register,
@@ -29,16 +33,19 @@ export default function RegisterPage() {
   const selectedRole = watch("role")
 
   const onSubmit = async (data: RegisterForm) => {
-    setLoading(true)
-    // Mock registration logic
-    console.log("Register:", data)
-    
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false)
-      // In real app, would redirect based on user role
-      alert(`Registration successful! Welcome to FanForge as a ${data.role}. (This is a demo)`)
-    }, 1000)
+    try {
+      setError("")
+      await signUp({
+        email: data.email,
+        password: data.password,
+        displayName: data.name,
+        role: data.role,
+      })
+      // Redirect will be handled by the auth context/middleware
+      router.push("/dashboard")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred during registration")
+    }
   }
 
   return (
@@ -52,6 +59,11 @@ export default function RegisterPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            {error && (
+              <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-md">
+                <p className="text-sm text-destructive">{error}</p>
+              </div>
+            )}
             <div className="space-y-2">
               <label htmlFor="name" className="text-sm font-medium">
                 Full name

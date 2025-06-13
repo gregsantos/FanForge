@@ -34,7 +34,7 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   // Define protected routes
-  const protectedRoutes = ['/dashboard', '/campaigns', '/submissions', '/create', '/portfolio']
+  const protectedRoutes = ['/dashboard', '/campaigns', '/submissions', '/create', '/portfolio', '/discover']
   const authRoutes = ['/login', '/register']
   
   const isProtectedRoute = protectedRoutes.some(route => 
@@ -52,9 +52,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
 
-  // Redirect authenticated users from auth routes to dashboard
+  // Redirect authenticated users from auth routes to appropriate dashboard
   if (isAuthRoute && user) {
     const redirectUrl = request.nextUrl.clone()
+    // Default to dashboard, but we could check user role here if needed
     redirectUrl.pathname = '/dashboard'
     return NextResponse.redirect(redirectUrl)
   }

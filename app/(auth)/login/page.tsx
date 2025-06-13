@@ -3,17 +3,21 @@
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card"
 import { loginSchema } from "@/lib/validations"
+import { useAuth } from "@/lib/contexts/auth"
 import type { z } from "zod"
 
 type LoginForm = z.infer<typeof loginSchema>
 
 export default function LoginPage() {
-  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string>("")
+  const { signIn, loading } = useAuth()
+  const router = useRouter()
 
   const {
     register,
@@ -24,16 +28,15 @@ export default function LoginPage() {
   })
 
   const onSubmit = async (data: LoginForm) => {
-    setLoading(true)
-    // Mock login logic
-    console.log("Login:", data)
-    
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false)
-      // In real app, would redirect based on user role
-      alert("Login successful! (This is a demo)")
-    }, 1000)
+    try {
+      setError("")
+      await signIn(data)
+      // Redirect based on user role - middleware will handle this automatically
+      // but we can specify a default
+      router.push("/dashboard")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An error occurred during login")
+    }
   }
 
   return (
@@ -47,6 +50,11 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            {error && (
+              <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-md">
+                <p className="text-sm text-destructive">{error}</p>
+              </div>
+            )}
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium">
                 Email address

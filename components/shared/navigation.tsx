@@ -3,18 +3,15 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { User, LegacyUser } from "@/types"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/lib/contexts/auth"
 import { Menu, X, Palette, Search, User as UserIcon, BarChart3, FileText, Eye } from "lucide-react"
 import { useState } from "react"
 
-interface NavigationProps {
-  user?: LegacyUser
-}
-
-export function Navigation({ user }: NavigationProps) {
+export function Navigation() {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { user, signOut, loading } = useAuth()
 
   const creatorLinks = [
     { href: "/discover", label: "Discover", icon: Search },
@@ -30,6 +27,15 @@ export function Navigation({ user }: NavigationProps) {
   ]
 
   const links = user?.role === "creator" ? creatorLinks : brandLinks
+
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+      setMobileMenuOpen(false)
+    } catch (error) {
+      console.error('Error signing out:', error)
+    }
+  }
 
   return (
     <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -74,9 +80,9 @@ export function Navigation({ user }: NavigationProps) {
             ) : (
               <div className="hidden md:flex md:items-center md:space-x-4">
                 <span className="text-sm text-muted-foreground">
-                  Welcome, {user.name}
+                  Welcome, {user.displayName || user.email}
                 </span>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={handleSignOut} disabled={loading}>
                   Sign Out
                 </Button>
               </div>
@@ -124,9 +130,9 @@ export function Navigation({ user }: NavigationProps) {
                 ))}
                 <div className="border-t pt-4">
                   <div className="px-3 py-2 text-sm text-muted-foreground">
-                    {user.name}
+                    {user.displayName || user.email}
                   </div>
-                  <Button variant="outline" size="sm" className="mx-3">
+                  <Button variant="outline" size="sm" className="mx-3" onClick={handleSignOut} disabled={loading}>
                     Sign Out
                   </Button>
                 </div>
