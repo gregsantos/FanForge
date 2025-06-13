@@ -26,7 +26,7 @@ export default function BrandSubmissionsPage() {
 
   const filteredSubmissions = mockSubmissions.filter(submission => {
     const matchesSearch = submission.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         submission.description.toLowerCase().includes(searchTerm.toLowerCase())
+                         (submission.description?.toLowerCase().includes(searchTerm.toLowerCase()) || false)
     const matchesStatus = statusFilter === "all" || submission.status === statusFilter
     
     return matchesSearch && matchesStatus
@@ -177,7 +177,7 @@ export default function BrandSubmissionsPage() {
       {/* Submissions List */}
       <div className="space-y-6">
         {filteredSubmissions.map((submission) => {
-          const campaign = mockCampaigns.find(c => c.id === submission.campaign_id)
+          const campaign = mockCampaigns.find(c => c.id === submission.campaignId)
           const isSelected = selectedSubmission === submission.id
           
           return (
@@ -197,11 +197,11 @@ export default function BrandSubmissionsPage() {
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <User className="h-4 w-4" />
-                        Creator {submission.creator_id}
+                        Creator {submission.creatorId}
                       </span>
                       <span className="flex items-center gap-1">
                         <Calendar className="h-4 w-4" />
-                        {submission.created_at.toLocaleDateString()}
+                        {submission.createdAt ? submission.createdAt.toLocaleDateString() : 'Unknown'}
                       </span>
                       <span className="flex items-center gap-1">
                         <FileImage className="h-4 w-4" />
@@ -229,7 +229,7 @@ export default function BrandSubmissionsPage() {
                       <h3 className="font-medium">Artwork</h3>
                       <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
                         <img
-                          src={submission.artwork_url}
+                          src={submission.artworkUrl}
                           alt={submission.title}
                           className="w-full h-full object-cover"
                         />
@@ -282,7 +282,7 @@ export default function BrandSubmissionsPage() {
                         <div className="space-y-3">
                           <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
                             <p className="text-sm text-green-800">
-                              ✓ Approved on {submission.updated_at.toLocaleDateString()}
+                              ✓ Approved on {submission.updatedAt ? submission.updatedAt.toLocaleDateString() : 'Unknown'}
                             </p>
                           </div>
                           <Button variant="outline" size="sm" className="w-full">
@@ -296,7 +296,7 @@ export default function BrandSubmissionsPage() {
                         <div className="space-y-3">
                           <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
                             <p className="text-sm text-red-800">
-                              ✗ Rejected on {submission.updated_at.toLocaleDateString()}
+                              ✗ Rejected on {submission.updatedAt ? submission.updatedAt.toLocaleDateString() : 'Unknown'}
                             </p>
                           </div>
                           <Button variant="outline" size="sm" className="w-full">
@@ -321,8 +321,8 @@ export default function BrandSubmissionsPage() {
                         <h4 className="text-sm font-medium">Campaign Details</h4>
                         <div className="space-y-1 text-sm text-muted-foreground">
                           <p>Campaign: {campaign?.title}</p>
-                          <p>Brand: {campaign?.brand_name}</p>
-                          <p>Deadline: {campaign?.deadline.toLocaleDateString()}</p>
+                          <p>Brand: {campaign?.brand?.name}</p>
+                          <p>Deadline: {campaign?.endDate ? campaign.endDate.toLocaleDateString() : 'No deadline'}</p>
                         </div>
                       </div>
                     </div>

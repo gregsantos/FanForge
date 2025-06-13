@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { mockSubmissions } from "@/lib/mock-data"
-import { Campaign } from "@/types"
+import { CampaignWithAssets } from "@/types"
 import { 
   Calendar, 
   Users, 
@@ -25,11 +25,11 @@ import {
 import Link from "next/link"
 
 interface CampaignDetailClientProps {
-  campaign: Campaign
+  campaign: CampaignWithAssets
 }
 
 export function CampaignDetailClient({ campaign }: CampaignDetailClientProps) {
-  const campaignSubmissions = mockSubmissions.filter(s => s.campaign_id === campaign.id)
+  const campaignSubmissions = mockSubmissions.filter(s => s.campaignId === campaign.id)
   const pendingSubmissions = campaignSubmissions.filter(s => s.status === "pending")
   const approvedSubmissions = campaignSubmissions.filter(s => s.status === "approved")
 
@@ -47,8 +47,9 @@ export function CampaignDetailClient({ campaign }: CampaignDetailClientProps) {
   }
 
   const getDaysUntilDeadline = () => {
+    if (!campaign.endDate) return 0
     const today = new Date()
-    const deadline = new Date(campaign.deadline)
+    const deadline = new Date(campaign.endDate)
     const diffTime = deadline.getTime() - today.getTime()
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
     return diffDays
@@ -68,7 +69,7 @@ export function CampaignDetailClient({ campaign }: CampaignDetailClientProps) {
             </Badge>
           </div>
           <p className="text-muted-foreground">
-            {campaign.brand_name} • Created {campaign.created_at.toLocaleDateString()}
+            {campaign.brand?.name} • Created {campaign.createdAt ? campaign.createdAt.toLocaleDateString() : 'Unknown date'}
           </p>
         </div>
         <div className="flex gap-2">
@@ -93,7 +94,7 @@ export function CampaignDetailClient({ campaign }: CampaignDetailClientProps) {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{campaign.submission_count}</div>
+            <div className="text-2xl font-bold">{campaign.submissionCount}</div>
             <p className="text-xs text-muted-foreground">
               {campaignSubmissions.length} in review
             </p>
@@ -142,7 +143,7 @@ export function CampaignDetailClient({ campaign }: CampaignDetailClientProps) {
               {daysLeft > 0 ? `${daysLeft}d` : "Ended"}
             </div>
             <p className="text-xs text-muted-foreground">
-              Until {campaign.deadline.toLocaleDateString()}
+              Until {campaign.endDate ? campaign.endDate.toLocaleDateString() : 'No deadline'}
             </p>
           </CardContent>
         </Card>
@@ -217,7 +218,7 @@ export function CampaignDetailClient({ campaign }: CampaignDetailClientProps) {
                 </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
-                  <Image className="mx-auto h-8 w-8 mb-2" />
+                  <Image className="mx-auto h-8 w-8 mb-2" aria-hidden="true" />
                   <p className="text-sm">No assets uploaded yet</p>
                   <Button variant="outline" size="sm" className="mt-2">
                     Upload Assets
@@ -252,7 +253,7 @@ export function CampaignDetailClient({ campaign }: CampaignDetailClientProps) {
                       <div className="flex items-center gap-4">
                         <div className="w-16 h-16 bg-muted rounded-lg overflow-hidden">
                           <img
-                            src={submission.artwork_url}
+                            src={submission.artworkUrl}
                             alt={submission.title}
                             className="w-full h-full object-cover"
                           />
@@ -260,10 +261,10 @@ export function CampaignDetailClient({ campaign }: CampaignDetailClientProps) {
                         <div className="space-y-1">
                           <h3 className="font-medium">{submission.title}</h3>
                           <p className="text-sm text-muted-foreground">
-                            Creator {submission.creator_id}
+                            Creator {submission.creatorId}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {submission.created_at.toLocaleDateString()}
+                            {submission.createdAt ? submission.createdAt.toLocaleDateString() : 'Unknown'}
                           </p>
                         </div>
                       </div>
@@ -316,7 +317,7 @@ export function CampaignDetailClient({ campaign }: CampaignDetailClientProps) {
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Deadline</span>
                   <span className="text-sm font-medium">
-                    {campaign.deadline.toLocaleDateString()}
+                    {campaign.endDate ? campaign.endDate.toLocaleDateString() : 'No deadline'}
                   </span>
                 </div>
 
@@ -329,7 +330,7 @@ export function CampaignDetailClient({ campaign }: CampaignDetailClientProps) {
 
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Submissions</span>
-                  <span className="text-sm font-medium">{campaign.submission_count}</span>
+                  <span className="text-sm font-medium">{campaign.submissionCount}</span>
                 </div>
               </div>
 
@@ -383,15 +384,15 @@ export function CampaignDetailClient({ campaign }: CampaignDetailClientProps) {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Brand</span>
-                <span>{campaign.brand_name}</span>
+                <span>{campaign.brand?.name}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Created</span>
-                <span>{campaign.created_at.toLocaleDateString()}</span>
+                <span>{campaign.createdAt ? campaign.createdAt.toLocaleDateString() : 'Unknown'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Last Updated</span>
-                <span>{campaign.updated_at.toLocaleDateString()}</span>
+                <span>{campaign.updatedAt ? campaign.updatedAt.toLocaleDateString() : 'Unknown'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Assets</span>

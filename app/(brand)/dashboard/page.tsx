@@ -122,12 +122,12 @@ export default function BrandDashboardPage() {
                 <div className="space-y-1">
                   <h3 className="font-medium text-sm">{campaign.title}</h3>
                   <p className="text-xs text-muted-foreground">
-                    {campaign.submission_count} submissions
+                    {campaign.submissionCount} submissions
                   </p>
                   <div className="flex items-center gap-2">
                     <Calendar className="h-3 w-3 text-muted-foreground" />
                     <span className="text-xs text-muted-foreground">
-                      Ends {campaign.deadline.toLocaleDateString()}
+                      Ends {campaign.endDate ? campaign.endDate.toLocaleDateString() : 'No deadline'}
                     </span>
                   </div>
                 </div>
@@ -180,7 +180,7 @@ export default function BrandDashboardPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {mockSubmissions.slice(0, 3).map((submission) => {
-              const campaign = mockCampaigns.find(c => c.id === submission.campaign_id)
+              const campaign = mockCampaigns.find(c => c.id === submission.campaignId)
               return (
                 <div key={submission.id} className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="space-y-1">
@@ -189,7 +189,7 @@ export default function BrandDashboardPage() {
                       {campaign?.title}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {submission.created_at.toLocaleDateString()}
+                      {submission.createdAt ? submission.createdAt.toLocaleDateString() : 'Unknown'}
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-2">

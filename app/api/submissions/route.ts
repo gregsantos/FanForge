@@ -13,11 +13,11 @@ export async function GET(request: NextRequest) {
 
   // Apply filters
   if (campaignId) {
-    filteredSubmissions = filteredSubmissions.filter(s => s.campaign_id === campaignId)
+    filteredSubmissions = filteredSubmissions.filter(s => s.campaignId === campaignId)
   }
 
   if (creatorId) {
-    filteredSubmissions = filteredSubmissions.filter(s => s.creator_id === creatorId)
+    filteredSubmissions = filteredSubmissions.filter(s => s.creatorId === creatorId)
   }
 
   if (status && status !== "all") {
@@ -39,8 +39,8 @@ export async function GET(request: NextRequest) {
       creator_name: "Mock Creator", // Would fetch from users
       title: submission.title,
       status: submission.status,
-      artwork_url: submission.artwork_url,
-      created_at: submission.created_at,
+      artwork_url: submission.artworkUrl,
+      created_at: submission.createdAt,
     })),
     pagination: {
       page,
