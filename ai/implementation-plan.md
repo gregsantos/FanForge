@@ -1,4 +1,4 @@
-## Implementation Plan Reference
+# Implementation Plan
 
 You will follow this exact sequence from the Implementation Plan:
 
