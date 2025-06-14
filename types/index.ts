@@ -97,6 +97,7 @@ export interface Campaign {
   rewardAmount?: number
   rewardCurrency?: string
   featuredUntil?: Date
+  featured?: boolean
   createdBy: string
   createdAt: Date
   updatedAt: Date
