@@ -61,11 +61,43 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     
     // Validate required fields
-    const { title, description, guidelines, deadline } = body
+    const { 
+      title, 
+      description, 
+      guidelines, 
+      ipKitId,
+      startDate,
+      endDate,
+      maxSubmissions,
+      rewardAmount,
+      rewardCurrency = "USD",
+      briefDocument,
+      status = "draft"
+    } = body
     
-    if (!title || !description || !guidelines || !deadline) {
+    if (!title || !description || !guidelines || !ipKitId) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: "Missing required fields: title, description, guidelines, and ipKitId are required" },
+        { status: 400 }
+      )
+    }
+
+    // Validate dates if provided
+    if (startDate && endDate) {
+      const start = new Date(startDate)
+      const end = new Date(endDate)
+      
+      if (end <= start) {
+        return NextResponse.json(
+          { error: "End date must be after start date" },
+          { status: 400 }
+        )
+      }
+    }
+
+    if (endDate && new Date(endDate) <= new Date()) {
+      return NextResponse.json(
+        { error: "End date must be in the future" },
         { status: 400 }
       )
     }
@@ -76,15 +108,24 @@ export async function POST(request: NextRequest) {
       title,
       description,
       guidelines,
+      ipKitId,
       brand_id: "mock-brand-id",
       brand_name: "Mock Brand",
-      status: "draft" as const,
-      deadline: new Date(deadline),
+      status: status as "draft" | "active" | "paused" | "closed",
+      startDate: startDate ? new Date(startDate) : null,
+      endDate: endDate ? new Date(endDate) : null,
+      maxSubmissions: maxSubmissions || null,
+      rewardAmount: rewardAmount || null,
+      rewardCurrency,
+      briefDocument: briefDocument || null,
       assets: [],
       submission_count: 0,
       created_at: new Date(),
       updated_at: new Date(),
     }
+
+    // TODO: In a real implementation, save to database here
+    // For now, we'll just simulate the response
 
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 500))
@@ -95,10 +136,12 @@ export async function POST(request: NextRequest) {
         title: newCampaign.title,
         status: newCampaign.status,
         created_at: newCampaign.created_at,
+        updated_at: newCampaign.updated_at,
       }
     }, { status: 201 })
 
   } catch (error) {
+    console.error("Campaign creation error:", error)
     return NextResponse.json(
       { error: "Invalid request data" },
       { status: 400 }

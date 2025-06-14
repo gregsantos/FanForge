@@ -77,10 +77,12 @@ export function CampaignDetailClient({ campaign }: CampaignDetailClientProps) {
             <Share className="mr-2 h-4 w-4" />
             Share
           </Button>
-          <Button>
-            <Edit className="mr-2 h-4 w-4" />
-            Edit Campaign
-          </Button>
+          <Link href={`/campaigns/${campaign.id}/edit`}>
+            <Button>
+              <Edit className="mr-2 h-4 w-4" />
+              Edit Campaign
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -353,10 +355,12 @@ export function CampaignDetailClient({ campaign }: CampaignDetailClientProps) {
               <CardTitle>Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button className="w-full">
-                <Edit className="mr-2 h-4 w-4" />
-                Edit Campaign
-              </Button>
+              <Link href={`/campaigns/${campaign.id}/edit`}>
+                <Button className="w-full">
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit Campaign
+                </Button>
+              </Link>
               <Button variant="outline" className="w-full">
                 <Users className="mr-2 h-4 w-4" />
                 View All Submissions

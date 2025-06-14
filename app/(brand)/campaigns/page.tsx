@@ -58,10 +58,12 @@ export default function BrandCampaignsPage() {
             Create and manage your creator collaboration campaigns
           </p>
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          New Campaign
-        </Button>
+        <Link href="/campaigns/new">
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            New Campaign
+          </Button>
+        </Link>
       </div>
 
       {/* Filters */}
@@ -218,10 +220,12 @@ export default function BrandCampaignsPage() {
                     View
                   </Button>
                 </Link>
-                <Button variant="outline" size="sm" className="flex-1">
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit
-                </Button>
+                <Link href={`/campaigns/${campaign.id}/edit`} className="flex-1">
+                  <Button variant="outline" size="sm" className="w-full">
+                    <Edit className="mr-2 h-4 w-4" />
+                    Edit
+                  </Button>
+                </Link>
               </div>
             </CardContent>
           </Card>
@@ -241,10 +245,12 @@ export default function BrandCampaignsPage() {
               }
             </p>
             {(!searchTerm && statusFilter === "all") && (
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Campaign
-              </Button>
+              <Link href="/campaigns/new">
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Campaign
+                </Button>
+              </Link>
             )}
           </CardContent>
         </Card>
