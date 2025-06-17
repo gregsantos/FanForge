@@ -546,9 +546,9 @@ export function CreationCanvas({
                   variant={isPanning ? "default" : "outline"} 
                   size="sm"
                   onMouseDown={handleMouseDown}
+                  title="Pan"
                 >
                   <Move className="h-4 w-4 mr-1" />
-                  <span className="hidden lg:inline">Pan</span>
                 </Button>
                 <div className="border-l h-6 mx-2 hidden lg:block" />
               </>
@@ -573,16 +573,6 @@ export function CreationCanvas({
             </Button>
             
             {!isMobile && (
-              <>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={fitToScreen}
-                  title="Fit to screen"
-                  className="hidden xl:flex"
-                >
-                  Fit
-                </Button>
                 <Button 
                   variant="outline" 
                   size="sm"
@@ -592,7 +582,6 @@ export function CreationCanvas({
                 >
                   Reset
                 </Button>
-              </>
             )}
           </div>
           
@@ -617,7 +606,7 @@ export function CreationCanvas({
                 className="hidden lg:flex"
               >
                 <Save className={`h-4 w-4 mr-1 ${isAutoSaving ? 'animate-spin' : ''}`} />
-                <span className="hidden xl:inline">{isAutoSaving ? 'Saving...' : 'Auto-Save'}</span>
+                <span className="hidden xl:inline">{isAutoSaving ? 'Saving...' : 'Save'}</span>
               </Button>
             )}
             
