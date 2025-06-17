@@ -309,7 +309,7 @@ export function CreationCanvas({
   }
 
   return (
-    <div className={`h-screen bg-background overflow-hidden ${isMobile ? 'flex flex-col' : 'flex'}`}>
+    <div className={`h-screen w-full bg-background ${isMobile ? 'flex flex-col' : 'flex'}`}>
       {/* Loading Overlay */}
       {isLoading && (
         <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
@@ -629,7 +629,7 @@ export function CreationCanvas({
         </div>
 
         {/* Canvas */}
-        <div className="flex-1 p-2 sm:p-4 overflow-auto">
+        <div className={`flex-1 overflow-auto ${isMobile ? 'p-2' : 'p-2'}`}>
           <div
             ref={canvasContainerRef}
             className="relative w-full h-full flex items-center justify-center min-h-0"
@@ -643,9 +643,12 @@ export function CreationCanvas({
               }`}
               style={(() => {
                 if (isMobile) {
+                  // Use full available width minus minimal padding for mobile
+                  const availableWidth = viewportWidth - 8 // Minimal padding (p-1 = 4px * 2)
+                  const canvasWidth = Math.min(800, availableWidth)
                   return {
-                    width: `${Math.min(800, viewportWidth - 32)}px`,
-                    height: `${Math.min(600, (viewportWidth - 32) * 0.75)}px`,
+                    width: `${canvasWidth}px`,
+                    height: `${canvasWidth * 0.75}px`, // Maintain 4:3 aspect ratio
                     transform: 'none',
                     transformOrigin: 'center',
                     minWidth: '300px',
