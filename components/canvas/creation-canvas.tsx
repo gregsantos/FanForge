@@ -52,6 +52,7 @@ export function CreationCanvas({
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
   const [isAssetPanelOpen, setIsAssetPanelOpen] = useState(false)
   const [isPropertiesPanelOpen, setIsPropertiesPanelOpen] = useState(false)
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number; elementId: string } | null>(null)
   const [isMobile, setIsMobile] = useState(false)
   const [viewportWidth, setViewportWidth] = useState(800)
   const [screenSize, setScreenSize] = useState<'mobile' | 'tablet' | 'desktop'>('desktop')
@@ -85,12 +86,43 @@ export function CreationCanvas({
     }
   }, [])
 
-  // Auto-open properties when element is selected on mobile
-  useEffect(() => {
-    if (isMobile && selectedElement && !isPropertiesPanelOpen) {
-      setIsPropertiesPanelOpen(true)
+  // Handle touch events for moving elements on mobile
+  const handleTouchStart = (e: React.TouchEvent, elementId: string) => {
+    if (isMobile) {
+      e.stopPropagation()
+      const touch = e.touches[0]
+      setTouchStart({
+        x: touch.clientX,
+        y: touch.clientY,
+        elementId
+      })
+      setSelectedElement(elementId)
     }
-  }, [selectedElement, isMobile, isPropertiesPanelOpen])
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (isMobile && touchStart) {
+      e.preventDefault()
+      const touch = e.touches[0]
+      const deltaX = touch.clientX - touchStart.x
+      const deltaY = touch.clientY - touchStart.y
+      
+      const element = elements.find(el => el.id === touchStart.elementId)
+      if (element) {
+        const newX = Math.max(0, element.x + deltaX)
+        const newY = Math.max(0, element.y + deltaY)
+        
+        updateElement(touchStart.elementId, { x: newX, y: newY })
+        setTouchStart({ ...touchStart, x: touch.clientX, y: touch.clientY })
+      }
+    }
+  }
+
+  const handleTouchEnd = () => {
+    if (isMobile) {
+      setTouchStart(null)
+    }
+  }
 
   const categories = [
     { id: "all", label: "All Assets", icon: Palette },
@@ -366,44 +398,36 @@ export function CreationCanvas({
                   {(filteredAssets.length > 20 ? visibleAssets : filteredAssets).map((asset, index) => (
                     <div
                       key={asset.id}
-                      draggable
+                      draggable={!isMobile} // Disable drag on mobile
                       onDragStart={e => {
+                        if (isMobile) return // No drag on mobile
                         e.dataTransfer.setData("assetId", asset.id)
                         setIsDragging(true)
-                        // Don't close panel on mobile when dragging - keep it open for drop target
                       }}
                       onDragEnd={() => {
+                        if (isMobile) return
                         setIsDragging(false)
                         setDragPreview(null)
-                        // Close panel after drag is complete on mobile
-                        if (isMobile) {
-                          setTimeout(() => setIsAssetPanelOpen(false), 100)
-                        }
                       }}
                       className="asset-palette-item group relative aspect-square border border-border rounded cursor-pointer transition-all hover:border-primary active:scale-95"
                       onClick={(e) => {
-                        // Prevent click during drag operations
-                        if (isDragging) {
-                          e.preventDefault()
-                          return
-                        }
+                        // On mobile and desktop: click to add asset to center of canvas
+                        setIsAssetPanelOpen(false)
+                        const canvasWidth = isMobile ? Math.min(800, viewportWidth - 8) : 800
+                        const canvasHeight = isMobile ? canvasWidth * 0.75 : 600
                         
-                        // On mobile, close assets and add asset to center of canvas
-                        if (isMobile) {
-                          setIsAssetPanelOpen(false)
-                          const newElement: CanvasElement = {
-                            id: generateId(),
-                            assetId: asset.id,
-                            x: 300, // Center of canvas
-                            y: 200,
-                            width: 100,
-                            height: 100,
-                            rotation: 0,
-                            zIndex: elements.length,
-                          }
-                          setElements(prev => [...prev, newElement])
-                          setSelectedElement(newElement.id)
+                        const newElement: CanvasElement = {
+                          id: generateId(),
+                          assetId: asset.id,
+                          x: (canvasWidth - 100) / 2, // Center horizontally
+                          y: (canvasHeight - 100) / 2, // Center vertically  
+                          width: 100,
+                          height: 100,
+                          rotation: 0,
+                          zIndex: elements.length,
                         }
+                        setElements(prev => [...prev, newElement])
+                        setSelectedElement(newElement.id)
                       }}
                     >
                       <img
@@ -586,17 +610,6 @@ export function CreationCanvas({
           </div>
           
           <div className="flex items-center gap-2 flex-shrink-0">
-            {/* Mobile: Properties toggle */}
-            {isMobile && selectedElement && (
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setIsPropertiesPanelOpen(!isPropertiesPanelOpen)}
-              >
-                <Settings className="h-4 w-4 mr-1" />
-                Edit
-              </Button>
-            )}
             
             {!isMobile && (
               <Button 
@@ -618,7 +631,7 @@ export function CreationCanvas({
         </div>
 
         {/* Canvas */}
-        <div className={`flex-1 overflow-auto ${isMobile ? 'p-2' : 'p-2'}`}>
+        <div className={`flex-1 overflow-auto ${isMobile ? 'p-2 pb-20' : 'p-2'}`}>
           <div
             ref={canvasContainerRef}
             className="relative w-full h-full flex items-center justify-center min-h-0"
@@ -686,18 +699,14 @@ export function CreationCanvas({
               <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
                 <div className="text-center p-4">
                   <Palette className="mx-auto h-8 w-8 sm:h-12 sm:w-12 mb-2 sm:mb-4" />
-                  <h3 className="font-medium mb-1 sm:mb-2 text-sm sm:text-base">
-                    {isDragging && isMobile ? 'Drop Here!' : 'Start Creating'}
-                  </h3>
+                  <h3 className="font-medium mb-1 sm:mb-2 text-sm sm:text-base">Start Creating</h3>
                   <p className="text-xs sm:text-sm">
-                    {isDragging && isMobile 
-                      ? 'Release to add the asset to your canvas'
-                      : isMobile 
-                      ? 'Tap assets above to add them or drag them here' 
+                    {isMobile 
+                      ? 'Tap assets above to add them to your canvas' 
                       : 'Drag assets from the palette to begin'
                     }
                   </p>
-                  {!isMobile && !isDragging && (
+                  {!isMobile && (
                     <p className="text-xs mt-2 opacity-70">Ctrl+Scroll to zoom • Middle-click to pan</p>
                   )}
                 </div>
@@ -746,6 +755,9 @@ export function CreationCanvas({
                     e.stopPropagation()
                     setSelectedElement(element.id)
                   }}
+                  onTouchStart={(e) => handleTouchStart(e, element.id)}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
                 >
                   <img
                     src={asset.url}
@@ -761,93 +773,117 @@ export function CreationCanvas({
         </div>
       </div>
 
-      {/* Mobile Properties Bottom Sheet */}
-      {isMobile && isPropertiesPanelOpen && (
-        <div className="fixed inset-x-0 bottom-0 bg-card border-t shadow-2xl z-50 max-h-[60vh] flex flex-col rounded-t-lg">
-          <div className="flex items-center justify-between p-4 border-b bg-card rounded-t-lg">
+      {/* Mobile Properties Persistent Bottom Panel */}
+      {isMobile && (
+        <div className="fixed inset-x-0 bottom-0 bg-card border-t shadow-lg z-40 flex flex-col">
+          {/* Always visible header */}
+          <div 
+            className="flex items-center justify-between p-3 cursor-pointer border-b bg-card"
+            onClick={() => setIsPropertiesPanelOpen(!isPropertiesPanelOpen)}
+          >
             <div className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
-              <span className="font-medium">Edit Element</span>
+              <span className="font-medium text-sm">
+                {selectedElementData ? `Edit ${selectedAsset?.filename || 'Element'}` : 'Properties'}
+              </span>
+              {selectedElementData && (
+                <Badge variant="secondary" className="text-xs">
+                  {selectedAsset?.category}
+                </Badge>
+              )}
             </div>
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => setIsPropertiesPanelOpen(false)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              {/* Quick delete button when element is selected */}
+              {selectedElementData && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    deleteElement(selectedElementData.id)
+                  }}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              )}
+              <Button variant="ghost" size="sm">
+                {isPropertiesPanelOpen ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronUp className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
           </div>
           
-          <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-card">
-            {selectedElementData ? (
-              <>
-                {/* Element Info */}
-                <div>
-                  <p className="text-sm font-medium mb-1">{selectedAsset?.filename}</p>
-                  <Badge variant="outline" className="text-xs">
-                    {selectedAsset?.category}
-                  </Badge>
-                </div>
-
-                {/* Quick Actions */}
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => updateElement(selectedElementData.id, { 
-                      rotation: (selectedElementData.rotation + 90) % 360 
-                    })}
-                    className="flex-1"
-                  >
-                    <RotateCw className="h-4 w-4 mr-1" />
-                    Rotate
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => {
-                      deleteElement(selectedElementData.id)
-                      setIsPropertiesPanelOpen(false)
-                    }}
-                    className="flex-1"
-                  >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Delete
-                  </Button>
-                </div>
-
-                {/* Size Controls */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-xs text-muted-foreground block mb-1">Width</label>
-                    <Input
-                      type="number"
-                      value={selectedElementData.width}
-                      onChange={(e) => updateElement(selectedElementData.id, { 
-                        width: parseInt(e.target.value) || 1 
+          {/* Expandable content */}
+          {isPropertiesPanelOpen && (
+            <div className="p-4 space-y-4 bg-card max-h-[50vh] overflow-y-auto">
+              {selectedElementData ? (
+                <>
+                  {/* Quick Actions */}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => updateElement(selectedElementData.id, { 
+                        rotation: (selectedElementData.rotation + 90) % 360 
                       })}
-                      className="h-8 text-sm"
-                    />
+                      className="flex-1"
+                    >
+                      <RotateCw className="h-4 w-4 mr-1" />
+                      Rotate
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const canvasWidth = Math.min(800, viewportWidth - 8)
+                        const canvasHeight = canvasWidth * 0.75
+                        updateElement(selectedElementData.id, { 
+                          x: (canvasWidth - selectedElementData.width) / 2,
+                          y: (canvasHeight - selectedElementData.height) / 2
+                        })
+                      }}
+                      className="flex-1"
+                    >
+                      Center
+                    </Button>
                   </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground block mb-1">Height</label>
-                    <Input
-                      type="number"
-                      value={selectedElementData.height}
-                      onChange={(e) => updateElement(selectedElementData.id, { 
-                        height: parseInt(e.target.value) || 1 
-                      })}
-                      className="h-8 text-sm"
-                    />
+
+                  {/* Size Controls */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-muted-foreground block mb-1">Width</label>
+                      <Input
+                        type="number"
+                        value={selectedElementData.width}
+                        onChange={(e) => updateElement(selectedElementData.id, { 
+                          width: parseInt(e.target.value) || 1 
+                        })}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground block mb-1">Height</label>
+                      <Input
+                        type="number"
+                        value={selectedElementData.height}
+                        onChange={(e) => updateElement(selectedElementData.id, { 
+                          height: parseInt(e.target.value) || 1 
+                        })}
+                        className="h-8 text-sm"
+                      />
+                    </div>
                   </div>
-                </div>
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                Select an element to edit its properties
-              </p>
-            )}
-          </div>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Select an element to edit its properties
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
 
