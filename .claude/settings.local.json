@@ -13,7 +13,10 @@
       "Bash(rg:*)",
       "Bash(pkill:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(npx drizzle-kit:*)",
+      "Bash(cat:*)",
+      "Bash(NODE_ENV=development npx drizzle-kit push)"
     ],
     "deny": []
   }
