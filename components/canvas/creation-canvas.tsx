@@ -18,7 +18,11 @@ import {
   ZoomIn, 
   ZoomOut,
   Layers,
-  Palette
+  Palette,
+  ChevronUp,
+  ChevronDown,
+  X,
+  Settings
 } from "lucide-react"
 
 interface CreationCanvasProps {
@@ -46,8 +50,47 @@ export function CreationCanvas({
   const [isPanning, setIsPanning] = useState(false)
   const [panStart, setPanStart] = useState({ x: 0, y: 0 })
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
+  const [isAssetPanelOpen, setIsAssetPanelOpen] = useState(false)
+  const [isPropertiesPanelOpen, setIsPropertiesPanelOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+  const [viewportWidth, setViewportWidth] = useState(800)
+  const [screenSize, setScreenSize] = useState<'mobile' | 'tablet' | 'desktop'>('desktop')
   const canvasRef = useRef<HTMLDivElement>(null)
   const canvasContainerRef = useRef<HTMLDivElement>(null)
+
+  // Detect responsive breakpoints for optimal layout
+  useEffect(() => {
+    const checkDevice = () => {
+      if (typeof window !== 'undefined') {
+        const width = window.innerWidth
+        setViewportWidth(width)
+        
+        if (width < 768) {
+          setScreenSize('mobile')
+          setIsMobile(true)
+        } else if (width < 960) {
+          setScreenSize('tablet') 
+          setIsMobile(true) // Use mobile layout for smaller tablets
+        } else {
+          setScreenSize('desktop')
+          setIsMobile(false) // Use desktop 3-column layout for 960px+
+        }
+      }
+    }
+    
+    checkDevice()
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', checkDevice)
+      return () => window.removeEventListener('resize', checkDevice)
+    }
+  }, [])
+
+  // Auto-open properties when element is selected on mobile
+  useEffect(() => {
+    if (isMobile && selectedElement && !isPropertiesPanelOpen) {
+      setIsPropertiesPanelOpen(true)
+    }
+  }, [selectedElement, isMobile, isPropertiesPanelOpen])
 
   const categories = [
     { id: "all", label: "All Assets", icon: Palette },
@@ -266,7 +309,7 @@ export function CreationCanvas({
   }
 
   return (
-    <div className="flex h-screen bg-background relative">
+    <div className={`h-screen bg-background overflow-hidden ${isMobile ? 'flex flex-col' : 'flex'}`}>
       {/* Loading Overlay */}
       {isLoading && (
         <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
@@ -277,8 +320,126 @@ export function CreationCanvas({
         </div>
       )}
 
-      {/* Asset Palette */}
-      <div className="w-80 lg:w-80 md:w-72 sm:w-64 border-r bg-card flex flex-col">
+      {/* Mobile Asset Panel - Top Collapsible */}
+      {isMobile && (
+        <div className={`bg-card border-b transition-all duration-300 ${isAssetPanelOpen ? 'h-80' : 'h-12'} shrink-0 ${isDragging ? 'z-30' : 'z-10'}`}>
+          <div className="flex items-center justify-between px-4 h-12 border-b">
+            <div className="flex items-center gap-2">
+              <Palette className="h-4 w-4" />
+              <span className="font-medium">Assets</span>
+              <Badge variant="outline" className="text-xs">{filteredAssets.length}</Badge>
+              {isDragging && (
+                <Badge variant="secondary" className="text-xs animate-pulse">
+                  Drag to canvas below
+                </Badge>
+              )}
+            </div>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => setIsAssetPanelOpen(!isAssetPanelOpen)}
+              disabled={isDragging} // Prevent closing while dragging
+            >
+              {isAssetPanelOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          </div>
+          
+          {isAssetPanelOpen && (
+            <div className="h-68 overflow-hidden">
+              <div className="p-3">
+                <div className="flex gap-1 mb-3 overflow-x-auto pb-2 scrollbar-hide">
+                  {categories.map((category) => (
+                    <Button
+                      key={category.id}
+                      variant={selectedCategory === category.id ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedCategory(category.id)}
+                      className="text-xs whitespace-nowrap flex-shrink-0"
+                    >
+                      <category.icon className="mr-1 h-3 w-3" />
+                      {category.label}
+                    </Button>
+                  ))}
+                </div>
+                
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 h-52 overflow-y-auto">
+                  {(filteredAssets.length > 20 ? visibleAssets : filteredAssets).map((asset, index) => (
+                    <div
+                      key={asset.id}
+                      draggable
+                      onDragStart={e => {
+                        e.dataTransfer.setData("assetId", asset.id)
+                        setIsDragging(true)
+                        // Don't close panel on mobile when dragging - keep it open for drop target
+                      }}
+                      onDragEnd={() => {
+                        setIsDragging(false)
+                        setDragPreview(null)
+                        // Close panel after drag is complete on mobile
+                        if (isMobile) {
+                          setTimeout(() => setIsAssetPanelOpen(false), 100)
+                        }
+                      }}
+                      className="asset-palette-item group relative aspect-square border border-border rounded cursor-pointer transition-all hover:border-primary active:scale-95"
+                      onClick={(e) => {
+                        // Prevent click during drag operations
+                        if (isDragging) {
+                          e.preventDefault()
+                          return
+                        }
+                        
+                        // On mobile, close assets and add asset to center of canvas
+                        if (isMobile) {
+                          setIsAssetPanelOpen(false)
+                          const newElement: CanvasElement = {
+                            id: generateId(),
+                            assetId: asset.id,
+                            x: 300, // Center of canvas
+                            y: 200,
+                            width: 100,
+                            height: 100,
+                            rotation: 0,
+                            zIndex: elements.length,
+                          }
+                          setElements(prev => [...prev, newElement])
+                          setSelectedElement(newElement.id)
+                        }
+                      }}
+                    >
+                      <img
+                        src={asset.thumbnailUrl || asset.url}
+                        alt={asset.filename}
+                        className="w-full h-full object-cover rounded"
+                        loading="lazy"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement
+                          if (target.src !== asset.url) {
+                            target.src = asset.url
+                          }
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity rounded flex items-center justify-center">
+                        <p className="text-white text-xs font-medium text-center px-1">
+                          {asset.filename}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Desktop Asset Palette */}
+      {!isMobile && (
+        <div 
+          className="border-r bg-card flex flex-col flex-shrink-0"
+          style={{ 
+            width: viewportWidth >= 1280 ? '288px' : viewportWidth >= 1024 ? '256px' : '224px'
+          }}
+        >
         <CardHeader>
           <CardTitle className="text-lg">Asset Kit</CardTitle>
           <p className="text-sm text-muted-foreground">{campaignTitle}</p>
@@ -324,7 +485,7 @@ export function CreationCanvas({
                   setIsDragging(false)
                   setDragPreview(null)
                 }}
-                className="asset-palette-item group relative"
+                className="asset-palette-item group relative aspect-square overflow-hidden"
               >
                 <img
                   src={asset.thumbnailUrl || asset.url}
@@ -340,7 +501,7 @@ export function CreationCanvas({
                   }}
                 />
                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
-                  <div className="text-white text-center">
+                  <div className="text-white text-center px-2">
                     <p className="text-xs font-medium truncate">{asset.filename}</p>
                     <Badge variant="secondary" className="mt-1 text-xs">
                       {asset.category}
@@ -358,22 +519,41 @@ export function CreationCanvas({
             </div>
           )}
         </CardContent>
-      </div>
+        </div>
+      )}
 
-      {/* Canvas Area */}
-      <div className="flex-1 flex flex-col bg-muted/30 min-w-0">
+      {/* Canvas Area - Responsive Layout */}
+      <div className="flex-1 flex flex-col bg-muted/30 min-h-0 min-w-0">
         {/* Canvas Toolbar */}
-        <div className="border-b bg-card px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Button 
-              variant={isPanning ? "default" : "outline"} 
-              size="sm"
-              onMouseDown={handleMouseDown}
-            >
-              <Move className="h-4 w-4 mr-1" />
-              Pan {isPanning ? '(Active)' : ''}
-            </Button>
-            <div className="border-l h-6 mx-2" />
+        <div className="border-b bg-card px-4 py-3 flex items-center justify-between min-w-0">
+          <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
+            {/* Mobile: Show assets toggle */}
+            {isMobile && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setIsAssetPanelOpen(!isAssetPanelOpen)}
+              >
+                <Palette className="h-4 w-4 mr-1" />
+                Assets
+              </Button>
+            )}
+            
+            {/* Desktop controls */}
+            {!isMobile && (
+              <>
+                <Button 
+                  variant={isPanning ? "default" : "outline"} 
+                  size="sm"
+                  onMouseDown={handleMouseDown}
+                >
+                  <Move className="h-4 w-4 mr-1" />
+                  <span className="hidden lg:inline">Pan</span>
+                </Button>
+                <div className="border-l h-6 mx-2 hidden lg:block" />
+              </>
+            )}
+            
             <Button 
               variant="outline" 
               size="sm"
@@ -391,62 +571,143 @@ export function CreationCanvas({
             >
               <ZoomIn className="h-4 w-4" />
             </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={fitToScreen}
-              title="Fit to screen"
-            >
-              Fit
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={resetCanvas}
-              title="Reset canvas"
-            >
-              Reset
-            </Button>
+            
+            {!isMobile && (
+              <>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={fitToScreen}
+                  title="Fit to screen"
+                  className="hidden xl:flex"
+                >
+                  Fit
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={resetCanvas}
+                  title="Reset canvas"
+                  className="hidden xl:flex"
+                >
+                  Reset
+                </Button>
+              </>
+            )}
           </div>
           
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              disabled={isAutoSaving}
-            >
-              <Save className={`h-4 w-4 mr-1 ${isAutoSaving ? 'animate-spin' : ''}`} />
-              {isAutoSaving ? 'Saving...' : 'Auto-Save'}
-            </Button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Mobile: Properties toggle */}
+            {isMobile && selectedElement && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setIsPropertiesPanelOpen(!isPropertiesPanelOpen)}
+              >
+                <Settings className="h-4 w-4 mr-1" />
+                Edit
+              </Button>
+            )}
+            
+            {!isMobile && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                disabled={isAutoSaving}
+                className="hidden lg:flex"
+              >
+                <Save className={`h-4 w-4 mr-1 ${isAutoSaving ? 'animate-spin' : ''}`} />
+                <span className="hidden xl:inline">{isAutoSaving ? 'Saving...' : 'Auto-Save'}</span>
+              </Button>
+            )}
+            
             <Button size="sm" onClick={handleSave} disabled={elements.length === 0}>
               <Download className="h-4 w-4 mr-1" />
-              Submit
+              {isMobile ? 'Done' : 'Submit'}
             </Button>
           </div>
         </div>
 
         {/* Canvas */}
-        <div className="flex-1 p-4 overflow-auto">
+        <div className="flex-1 p-2 sm:p-4 overflow-auto">
           <div
-            ref={canvasRef}
-            className="relative bg-white border-2 border-dashed border-muted-foreground/25 rounded-lg mx-auto"
-            style={{ 
-              width: `${800 * zoom}px`, 
-              height: `${600 * zoom}px`,
-              transform: `scale(${zoom})`,
-              transformOrigin: 'top left'
-            }}
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            onClick={() => setSelectedElement(null)}
+            ref={canvasContainerRef}
+            className="relative w-full h-full flex items-center justify-center min-h-0"
           >
+            <div
+              ref={canvasRef}
+              className={`relative bg-white border-2 border-dashed rounded-lg transition-colors ${
+                isDragging && isMobile 
+                  ? 'border-primary bg-primary/5 border-4' 
+                  : 'border-muted-foreground/25'
+              }`}
+              style={(() => {
+                if (isMobile) {
+                  return {
+                    width: `${Math.min(800, viewportWidth - 32)}px`,
+                    height: `${Math.min(600, (viewportWidth - 32) * 0.75)}px`,
+                    transform: 'none',
+                    transformOrigin: 'center',
+                    minWidth: '300px',
+                    maxWidth: '100%'
+                  }
+                } else {
+                  // Desktop: Calculate available space and scale canvas accordingly
+                  const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 800
+                  
+                  // Calculate panel widths based on viewport size with max-width constraint
+                  let panelWidth = 224 // w-56 (base)
+                  if (viewportWidth >= 1024) panelWidth = 256 // lg:w-64
+                  if (viewportWidth >= 1280) panelWidth = 288 // xl:w-72
+                  
+                  // Cap at max-w-72 (288px)
+                  panelWidth = Math.min(panelWidth, 288)
+                  
+                  const totalPanelWidth = panelWidth * 2 // Both side panels
+                  const padding = 64 // Canvas area padding
+                  
+                  const availableWidth = Math.max(400, viewportWidth - totalPanelWidth - padding)
+                  const availableHeight = Math.max(300, windowHeight - 200) // Subtract toolbar and padding
+                  
+                  const scaleX = availableWidth / 800
+                  const scaleY = availableHeight / 600
+                  const autoScale = Math.min(scaleX, scaleY, 1.0) // Keep at 100% max for better fit
+                  
+                  const finalScale = zoom * autoScale
+                  
+                  return {
+                    width: '800px',
+                    height: '600px',
+                    transform: `scale(${finalScale})`,
+                    transformOrigin: 'center',
+                  }
+                }
+              })()}
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onClick={() => setSelectedElement(null)}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+            >
             {elements.length === 0 && (
               <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-                <div className="text-center">
-                  <Palette className="mx-auto h-12 w-12 mb-4" />
-                  <h3 className="font-medium mb-2">Start Creating</h3>
-                  <p className="text-sm">Drag assets from the palette to begin</p>
-                  <p className="text-xs mt-2 opacity-70">Ctrl+Scroll to zoom • Middle-click to pan</p>
+                <div className="text-center p-4">
+                  <Palette className="mx-auto h-8 w-8 sm:h-12 sm:w-12 mb-2 sm:mb-4" />
+                  <h3 className="font-medium mb-1 sm:mb-2 text-sm sm:text-base">
+                    {isDragging && isMobile ? 'Drop Here!' : 'Start Creating'}
+                  </h3>
+                  <p className="text-xs sm:text-sm">
+                    {isDragging && isMobile 
+                      ? 'Release to add the asset to your canvas'
+                      : isMobile 
+                      ? 'Tap assets above to add them or drag them here' 
+                      : 'Drag assets from the palette to begin'
+                    }
+                  </p>
+                  {!isMobile && !isDragging && (
+                    <p className="text-xs mt-2 opacity-70">Ctrl+Scroll to zoom • Middle-click to pan</p>
+                  )}
                 </div>
               </div>
             )}
@@ -503,12 +764,109 @@ export function CreationCanvas({
                 </div>
               )
             })}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Properties Panel */}
-      <div className="w-80 lg:w-80 md:w-72 sm:w-64 border-l bg-card flex flex-col">
+      {/* Mobile Properties Bottom Sheet */}
+      {isMobile && isPropertiesPanelOpen && (
+        <div className="fixed inset-x-0 bottom-0 bg-card border-t shadow-2xl z-50 max-h-[60vh] flex flex-col rounded-t-lg">
+          <div className="flex items-center justify-between p-4 border-b bg-card rounded-t-lg">
+            <div className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              <span className="font-medium">Edit Element</span>
+            </div>
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={() => setIsPropertiesPanelOpen(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          
+          <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-card">
+            {selectedElementData ? (
+              <>
+                {/* Element Info */}
+                <div>
+                  <p className="text-sm font-medium mb-1">{selectedAsset?.filename}</p>
+                  <Badge variant="outline" className="text-xs">
+                    {selectedAsset?.category}
+                  </Badge>
+                </div>
+
+                {/* Quick Actions */}
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => updateElement(selectedElementData.id, { 
+                      rotation: (selectedElementData.rotation + 90) % 360 
+                    })}
+                    className="flex-1"
+                  >
+                    <RotateCw className="h-4 w-4 mr-1" />
+                    Rotate
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      deleteElement(selectedElementData.id)
+                      setIsPropertiesPanelOpen(false)
+                    }}
+                    className="flex-1"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Delete
+                  </Button>
+                </div>
+
+                {/* Size Controls */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Width</label>
+                    <Input
+                      type="number"
+                      value={selectedElementData.width}
+                      onChange={(e) => updateElement(selectedElementData.id, { 
+                        width: parseInt(e.target.value) || 1 
+                      })}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Height</label>
+                    <Input
+                      type="number"
+                      value={selectedElementData.height}
+                      onChange={(e) => updateElement(selectedElementData.id, { 
+                        height: parseInt(e.target.value) || 1 
+                      })}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                Select an element to edit its properties
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Desktop Properties Panel */}
+      {!isMobile && (
+        <div 
+          className="border-l bg-card flex flex-col flex-shrink-0"
+          style={{ 
+            width: viewportWidth >= 1280 ? '288px' : viewportWidth >= 1024 ? '256px' : '224px'
+          }}
+        >
         <CardHeader>
           <CardTitle className="text-lg flex items-center">
             <Layers className="mr-2 h-5 w-5" />
@@ -658,7 +1016,8 @@ export function CreationCanvas({
             </div>
           </div>
         </CardContent>
-      </div>
+        </div>
+      )}
     </div>
   )
 }

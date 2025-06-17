@@ -1,12 +1,12 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import {CreationCanvas} from "@/components/canvas/creation-canvas"
 import { Asset, Campaign, CanvasElement } from "@/types"
 import { mockAssets } from "@/lib/mock-data"
 
-export default function CreatePage() {
+function CreatePageContent() {
   const searchParams = useSearchParams()
   const campaignId = searchParams.get('campaign')
   
@@ -133,5 +133,20 @@ export default function CreatePage() {
         isLoading={isLoading}
       />
     </div>
+  )
+}
+
+export default function CreatePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2" />
+          <p className="text-sm text-muted-foreground">Loading canvas...</p>
+        </div>
+      </div>
+    }>
+      <CreatePageContent />
+    </Suspense>
   )
 }

@@ -64,11 +64,11 @@
 }
 
 .canvas-element.selected {
-  @apply border-primary-500;
+  @apply border-primary-500 ring-2 ring-primary ring-offset-2;
 }
 
 .asset-palette-item {
-  @apply aspect-square border border-neutral-200 rounded cursor-move hover:border-primary-500 hover:shadow-md transition-all;
+  @apply aspect-square border border-neutral-200 rounded cursor-move hover:border-primary-500 hover:shadow-md transition-all overflow-hidden;
 }
 
 .campaign-card {
@@ -85,4 +85,13 @@
 
 .submission-status-rejected {
   @apply bg-red-100 text-red-800 border-red-300;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
 }
