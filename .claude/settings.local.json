@@ -16,7 +16,8 @@
       "Bash(git commit:*)",
       "Bash(npx drizzle-kit:*)",
       "Bash(cat:*)",
-      "Bash(NODE_ENV=development npx drizzle-kit push)"
+      "Bash(NODE_ENV=development npx drizzle-kit push)",
+      "Bash(npm run dev:*)"
     ],
     "deny": []
   }

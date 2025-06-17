@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { generateId } from "@/lib/utils"
 import { 
   Save, 
@@ -22,7 +23,13 @@ import {
   ChevronUp,
   ChevronDown,
   X,
-  Settings
+  Settings,
+  Type,
+  Bold,
+  Italic,
+  AlignLeft,
+  AlignCenter,
+  AlignRight
 } from "lucide-react"
 
 interface CreationCanvasProps {
@@ -53,7 +60,10 @@ export function CreationCanvas({
   const [isAssetPanelOpen, setIsAssetPanelOpen] = useState(false)
   const [isPropertiesPanelOpen, setIsPropertiesPanelOpen] = useState(false)
   const [touchStart, setTouchStart] = useState<{ x: number; y: number; elementId: string } | null>(null)
+  const [elementDrag, setElementDrag] = useState<{ elementId: string; startX: number; startY: number; offsetX: number; offsetY: number } | null>(null)
+  const [isResizing, setIsResizing] = useState<{ elementId: string; corner: string; startX: number; startY: number; startWidth: number; startHeight: number } | null>(null)
   const [isMobile, setIsMobile] = useState(false)
+  const [isTouchDevice, setIsTouchDevice] = useState(false)
   const [viewportWidth, setViewportWidth] = useState(800)
   const [screenSize, setScreenSize] = useState<'mobile' | 'tablet' | 'desktop'>('desktop')
   const canvasRef = useRef<HTMLDivElement>(null)
@@ -65,6 +75,10 @@ export function CreationCanvas({
       if (typeof window !== 'undefined') {
         const width = window.innerWidth
         setViewportWidth(width)
+        
+        // Detect if device has touch capability
+        const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+        setIsTouchDevice(hasTouch)
         
         if (width < 768) {
           setScreenSize('mobile')
@@ -86,9 +100,9 @@ export function CreationCanvas({
     }
   }, [])
 
-  // Handle touch events for moving elements on mobile
+  // Handle touch events for moving elements on touch devices
   const handleTouchStart = (e: React.TouchEvent, elementId: string) => {
-    if (isMobile) {
+    if (isTouchDevice) {
       e.stopPropagation()
       const touch = e.touches[0]
       setTouchStart({
@@ -101,7 +115,7 @@ export function CreationCanvas({
   }
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (isMobile && touchStart) {
+    if (isTouchDevice && touchStart) {
       e.preventDefault()
       const touch = e.touches[0]
       const deltaX = touch.clientX - touchStart.x
@@ -119,10 +133,117 @@ export function CreationCanvas({
   }
 
   const handleTouchEnd = () => {
-    if (isMobile) {
+    if (isTouchDevice) {
       setTouchStart(null)
     }
   }
+
+  // Element drag handlers for mouse/trackpad devices
+  const handleElementMouseDown = (e: React.MouseEvent, elementId: string) => {
+    if (canvasRef.current) {
+      e.stopPropagation()
+      const rect = canvasRef.current.getBoundingClientRect()
+      const element = elements.find(el => el.id === elementId)
+      if (element) {
+        setElementDrag({
+          elementId,
+          startX: e.clientX,
+          startY: e.clientY,
+          offsetX: (e.clientX - rect.left - panOffset.x) / zoom - element.x,
+          offsetY: (e.clientY - rect.top - panOffset.y) / zoom - element.y
+        })
+        setSelectedElement(elementId)
+      }
+    }
+  }
+
+  const handleElementMouseMove = (e: MouseEvent) => {
+    if (elementDrag && canvasRef.current) {
+      const rect = canvasRef.current.getBoundingClientRect()
+      const newX = Math.max(0, (e.clientX - rect.left - panOffset.x) / zoom - elementDrag.offsetX)
+      const newY = Math.max(0, (e.clientY - rect.top - panOffset.y) / zoom - elementDrag.offsetY)
+      
+      updateElement(elementDrag.elementId, { x: newX, y: newY })
+    }
+  }
+
+  const handleElementMouseUp = () => {
+    setElementDrag(null)
+  }
+
+  // Resize handlers for mouse/trackpad devices
+  const handleResizeMouseDown = (e: React.MouseEvent, elementId: string, corner: string) => {
+    e.stopPropagation()
+    const element = elements.find(el => el.id === elementId)
+    if (element) {
+      setIsResizing({
+        elementId,
+        corner,
+        startX: e.clientX,
+        startY: e.clientY,
+        startWidth: element.width,
+        startHeight: element.height
+      })
+    }
+  }
+
+  const handleResizeMouseMove = (e: MouseEvent) => {
+    if (isResizing) {
+      const deltaX = e.clientX - isResizing.startX
+      const deltaY = e.clientY - isResizing.startY
+      
+      let newWidth = isResizing.startWidth
+      let newHeight = isResizing.startHeight
+      
+      switch (isResizing.corner) {
+        case 'se': // bottom-right
+          newWidth = Math.max(20, isResizing.startWidth + deltaX / zoom)
+          newHeight = Math.max(20, isResizing.startHeight + deltaY / zoom)
+          break
+        case 'sw': // bottom-left
+          newWidth = Math.max(20, isResizing.startWidth - deltaX / zoom)
+          newHeight = Math.max(20, isResizing.startHeight + deltaY / zoom)
+          break
+        case 'ne': // top-right
+          newWidth = Math.max(20, isResizing.startWidth + deltaX / zoom)
+          newHeight = Math.max(20, isResizing.startHeight - deltaY / zoom)
+          break
+        case 'nw': // top-left
+          newWidth = Math.max(20, isResizing.startWidth - deltaX / zoom)
+          newHeight = Math.max(20, isResizing.startHeight - deltaY / zoom)
+          break
+      }
+      
+      updateElement(isResizing.elementId, { width: newWidth, height: newHeight })
+    }
+  }
+
+  const handleResizeMouseUp = () => {
+    setIsResizing(null)
+  }
+
+  // Global mouse event listeners
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      handleElementMouseMove(e)
+      handleResizeMouseMove(e)
+    }
+
+    const handleMouseUp = () => {
+      handleElementMouseUp()
+      handleResizeMouseUp()
+    }
+
+    if (elementDrag || isResizing) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+      
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove)
+        document.removeEventListener('mouseup', handleMouseUp)
+      }
+    }
+  }, [elementDrag, isResizing, zoom, panOffset])
 
   const categories = [
     { id: "all", label: "All Assets", icon: Palette },
@@ -224,6 +345,7 @@ export function CreationCanvas({
 
       const newElement: CanvasElement = {
         id: generateId(),
+        type: 'asset',
         assetId: asset.id,
         x: Math.max(0, x - width / 2),
         y: Math.max(0, y - height / 2),
@@ -325,6 +447,33 @@ export function CreationCanvas({
     setZoom(1)
   }
 
+  const addTextElement = () => {
+    const canvasWidth = isMobile ? Math.min(800, viewportWidth - 8) : 800
+    const canvasHeight = isMobile ? canvasWidth * 0.75 : 600
+    
+    const newElement: CanvasElement = {
+      id: generateId(),
+      type: 'text',
+      text: 'Double-click to edit',
+      fontSize: 24,
+      fontFamily: 'Arial, sans-serif',
+      fontWeight: 'normal',
+      fontStyle: 'normal',
+      textAlign: 'center',
+      color: '#000000',
+      x: (canvasWidth - 200) / 2, // Center horizontally
+      y: (canvasHeight - 50) / 2, // Center vertically
+      width: 200,
+      height: 50,
+      rotation: 0,
+      zIndex: elements.length,
+      opacity: 1,
+    }
+    
+    setElements(prev => [...prev, newElement])
+    setSelectedElement(newElement.id)
+  }
+
   const fitToScreen = () => {
     if (canvasContainerRef.current && canvasRef.current) {
       const container = canvasContainerRef.current.getBoundingClientRect()
@@ -418,6 +567,7 @@ export function CreationCanvas({
                         
                         const newElement: CanvasElement = {
                           id: generateId(),
+                          type: 'asset',
                           assetId: asset.id,
                           x: (canvasWidth - 100) / 2, // Center horizontally
                           y: (canvasHeight - 100) / 2, // Center vertically  
@@ -595,6 +745,17 @@ export function CreationCanvas({
             >
               <ZoomIn className="h-4 w-4" />
             </Button>
+
+            <div className="border-l h-6 mx-2 hidden lg:block" />
+
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={addTextElement}
+              title="Add text"
+            >
+              <Type className="h-4 w-4" />
+            </Button>
             
             {!isMobile && (
                 <Button 
@@ -734,39 +895,133 @@ export function CreationCanvas({
             )}
             
             {elements.map(element => {
-              const asset = assets.find(a => a.id === element.assetId)
-              if (!asset) return null
-              
-              return (
-                <div
-                  key={element.id}
-                  className={`canvas-element absolute ${
-                    selectedElement === element.id ? 'selected' : ''
-                  }`}
-                  style={{
-                    left: element.x,
-                    top: element.y,
-                    width: element.width,
-                    height: element.height,
-                    transform: `rotate(${element.rotation}deg)`,
-                    zIndex: element.zIndex,
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setSelectedElement(element.id)
-                  }}
-                  onTouchStart={(e) => handleTouchStart(e, element.id)}
-                  onTouchMove={handleTouchMove}
-                  onTouchEnd={handleTouchEnd}
-                >
-                  <img
-                    src={asset.url}
-                    alt={asset.filename}
-                    className="w-full h-full object-cover pointer-events-none"
-                    draggable={false}
-                  />
-                </div>
-              )
+              if (element.type === 'asset') {
+                const asset = assets.find(a => a.id === element.assetId)
+                if (!asset) return null
+                
+                return (
+                  <div
+                    key={element.id}
+                    className={`canvas-element absolute ${
+                      selectedElement === element.id ? 'selected' : ''
+                    } ${elementDrag?.elementId === element.id ? 'cursor-grabbing' : isTouchDevice ? 'cursor-pointer' : 'cursor-grab'}`}
+                    style={{
+                      left: element.x,
+                      top: element.y,
+                      width: element.width,
+                      height: element.height,
+                      transform: `rotate(${element.rotation}deg)`,
+                      zIndex: element.zIndex,
+                      opacity: element.opacity || 1,
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setSelectedElement(element.id)
+                    }}
+                    onMouseDown={(e) => handleElementMouseDown(e, element.id)}
+                    onTouchStart={(e) => handleTouchStart(e, element.id)}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                  >
+                    <img
+                      src={asset.url}
+                      alt={asset.filename}
+                      className="w-full h-full object-cover pointer-events-none"
+                      draggable={false}
+                    />
+                    
+                    {/* Resize handles for selected elements on non-touch devices */}
+                    {selectedElement === element.id && !isTouchDevice && (
+                      <>
+                        {/* Corner resize handles */}
+                        <div
+                          className="absolute w-3 h-3 bg-primary border border-white rounded-sm cursor-nw-resize -top-1 -left-1"
+                          onMouseDown={(e) => handleResizeMouseDown(e, element.id, 'nw')}
+                        />
+                        <div
+                          className="absolute w-3 h-3 bg-primary border border-white rounded-sm cursor-ne-resize -top-1 -right-1"
+                          onMouseDown={(e) => handleResizeMouseDown(e, element.id, 'ne')}
+                        />
+                        <div
+                          className="absolute w-3 h-3 bg-primary border border-white rounded-sm cursor-sw-resize -bottom-1 -left-1"
+                          onMouseDown={(e) => handleResizeMouseDown(e, element.id, 'sw')}
+                        />
+                        <div
+                          className="absolute w-3 h-3 bg-primary border border-white rounded-sm cursor-se-resize -bottom-1 -right-1"
+                          onMouseDown={(e) => handleResizeMouseDown(e, element.id, 'se')}
+                        />
+                      </>
+                    )}
+                  </div>
+                )
+              } else if (element.type === 'text') {
+                return (
+                  <div
+                    key={element.id}
+                    className={`canvas-element absolute ${
+                      selectedElement === element.id ? 'selected' : ''
+                    } ${elementDrag?.elementId === element.id ? 'cursor-grabbing' : isTouchDevice ? 'cursor-pointer' : 'cursor-grab'}`}
+                    style={{
+                      left: element.x,
+                      top: element.y,
+                      width: element.width,
+                      height: element.height,
+                      transform: `rotate(${element.rotation}deg)`,
+                      zIndex: element.zIndex,
+                      opacity: element.opacity || 1,
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setSelectedElement(element.id)
+                    }}
+                    onMouseDown={(e) => handleElementMouseDown(e, element.id)}
+                    onTouchStart={(e) => handleTouchStart(e, element.id)}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
+                  >
+                    <div
+                      className="w-full h-full flex items-center justify-center pointer-events-none"
+                      style={{
+                        fontSize: element.fontSize || 24,
+                        fontFamily: element.fontFamily || 'Arial, sans-serif',
+                        fontWeight: element.fontWeight || 'normal',
+                        fontStyle: element.fontStyle || 'normal',
+                        textAlign: element.textAlign || 'center',
+                        color: element.color || '#000000',
+                        backgroundColor: element.backgroundColor || 'transparent',
+                        padding: '4px',
+                        borderRadius: '4px',
+                      }}
+                    >
+                      {element.text || 'Text'}
+                    </div>
+                    
+                    {/* Resize handles for selected text elements on non-touch devices */}
+                    {selectedElement === element.id && !isTouchDevice && (
+                      <>
+                        {/* Corner resize handles */}
+                        <div
+                          className="absolute w-3 h-3 bg-primary border border-white rounded-sm cursor-nw-resize -top-1 -left-1"
+                          onMouseDown={(e) => handleResizeMouseDown(e, element.id, 'nw')}
+                        />
+                        <div
+                          className="absolute w-3 h-3 bg-primary border border-white rounded-sm cursor-ne-resize -top-1 -right-1"
+                          onMouseDown={(e) => handleResizeMouseDown(e, element.id, 'ne')}
+                        />
+                        <div
+                          className="absolute w-3 h-3 bg-primary border border-white rounded-sm cursor-sw-resize -bottom-1 -left-1"
+                          onMouseDown={(e) => handleResizeMouseDown(e, element.id, 'sw')}
+                        />
+                        <div
+                          className="absolute w-3 h-3 bg-primary border border-white rounded-sm cursor-se-resize -bottom-1 -right-1"
+                          onMouseDown={(e) => handleResizeMouseDown(e, element.id, 'se')}
+                        />
+                      </>
+                    )}
+                  </div>
+                )
+              }
+              return null
             })}
             </div>
           </div>
@@ -784,11 +1039,16 @@ export function CreationCanvas({
             <div className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               <span className="font-medium text-sm">
-                {selectedElementData ? `Edit ${selectedAsset?.filename || 'Element'}` : 'Properties'}
+                {selectedElementData 
+                  ? selectedElementData.type === 'text'
+                    ? 'Edit Text'
+                    : `Edit ${selectedAsset?.filename || 'Element'}`
+                  : 'Properties'
+                }
               </span>
               {selectedElementData && (
                 <Badge variant="secondary" className="text-xs">
-                  {selectedAsset?.category}
+                  {selectedElementData.type === 'text' ? 'Text' : selectedAsset?.category}
                 </Badge>
               )}
             </div>
@@ -850,6 +1110,75 @@ export function CreationCanvas({
                       Center
                     </Button>
                   </div>
+
+                  {/* Text-specific controls */}
+                  {selectedElementData.type === 'text' && (
+                    <>
+                      <div>
+                        <label className="text-xs text-muted-foreground block mb-1">Text</label>
+                        <Textarea
+                          value={selectedElementData.text || ''}
+                          onChange={(e) => updateElement(selectedElementData.id, { 
+                            text: e.target.value 
+                          })}
+                          className="h-20 text-sm resize-none"
+                          placeholder="Enter your text..."
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-xs text-muted-foreground block mb-1">Font Size</label>
+                          <Input
+                            type="number"
+                            value={selectedElementData.fontSize || 24}
+                            onChange={(e) => updateElement(selectedElementData.id, { 
+                              fontSize: parseInt(e.target.value) || 12 
+                            })}
+                            className="h-8 text-sm"
+                            min="8"
+                            max="120"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted-foreground block mb-1">Color</label>
+                          <Input
+                            type="color"
+                            value={selectedElementData.color || '#000000'}
+                            onChange={(e) => updateElement(selectedElementData.id, { 
+                              color: e.target.value 
+                            })}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button
+                          variant={selectedElementData.fontWeight === 'bold' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => updateElement(selectedElementData.id, { 
+                            fontWeight: selectedElementData.fontWeight === 'bold' ? 'normal' : 'bold'
+                          })}
+                          className="flex-1"
+                        >
+                          <Bold className="h-4 w-4 mr-1" />
+                          Bold
+                        </Button>
+                        <Button
+                          variant={selectedElementData.fontStyle === 'italic' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => updateElement(selectedElementData.id, { 
+                            fontStyle: selectedElementData.fontStyle === 'italic' ? 'normal' : 'italic'
+                          })}
+                          className="flex-1"
+                        >
+                          <Italic className="h-4 w-4 mr-1" />
+                          Italic
+                        </Button>
+                      </div>
+                    </>
+                  )}
 
                   {/* Size Controls */}
                   <div className="grid grid-cols-2 gap-2">

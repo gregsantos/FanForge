@@ -181,13 +181,27 @@ export interface PortfolioItem {
 // Canvas and UI types
 export interface CanvasElement {
   id: string
-  assetId: string
+  type: 'asset' | 'text'
+  // Asset-specific properties
+  assetId?: string
+  // Text-specific properties
+  text?: string
+  fontSize?: number
+  fontFamily?: string
+  fontWeight?: 'normal' | 'bold' | '100' | '200' | '300' | '400' | '500' | '600' | '700' | '800' | '900'
+  fontStyle?: 'normal' | 'italic'
+  textAlign?: 'left' | 'center' | 'right'
+  color?: string
+  backgroundColor?: string
+  // Common properties
   x: number
   y: number
   width: number
   height: number
   rotation: number
   zIndex: number
+  opacity?: number
+  locked?: boolean
 }
 
 export interface CanvasState {

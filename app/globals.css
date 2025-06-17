@@ -60,11 +60,23 @@
 
 /* Custom FanForge styles */
 .canvas-element {
-  @apply cursor-move border-2 border-transparent hover:border-primary-300 transition-colors;
+  @apply border-2 border-transparent hover:border-primary-300 transition-colors;
 }
 
 .canvas-element.selected {
   @apply border-primary-500 ring-2 ring-primary ring-offset-2;
+}
+
+.canvas-element:hover:not(.selected) {
+  @apply border-primary-300;
+}
+
+/* Prevent text selection during drag */
+.canvas-element {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
 }
 
 .asset-palette-item {
