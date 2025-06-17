@@ -200,8 +200,16 @@ You will follow this exact sequence from the Implementation Plan:
 
 #### 5.5 Advanced Canvas Tools (Feature #15)
 
-- [ ] Implement text overlay functionality
-- [ ] Add font selection and text editing
+- [x] Implement text overlay functionality with creation tool
+- [x] Add comprehensive text editing with font controls (size, color, bold, italic)
+- [x] Implement double-click inline text editing with auto-focus
+- [x] Add keyboard shortcuts for text editing (Escape, Ctrl+Enter)
+- [x] Create drag and drop positioning for all canvas elements
+- [x] Implement visual resize handles with corner controls
+- [x] Add proper device detection (touch vs mouse input)
+- [x] Fix responsive drag/resize functionality for smaller screens
+- [x] Add visual feedback with appropriate cursors (grab, resize arrows)
+- [x] Implement event handling separation for drag, resize, and edit modes
 - [ ] Create basic image filters (brightness, contrast, etc.)
 - [ ] Build color adjustment tools
 - [ ] Enhance undo/redo with action history

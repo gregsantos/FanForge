@@ -1306,12 +1306,23 @@ export function CreationCanvas({
               {/* Element Info */}
               <div>
                 <h3 className="font-medium mb-2">Selected Element</h3>
-                <p className="text-sm text-muted-foreground mb-2">
-                  {selectedAsset?.filename}
-                </p>
-                <Badge variant="outline">
-                  {selectedAsset?.category}
-                </Badge>
+                {selectedElementData.type === 'text' ? (
+                  <>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {selectedElementData.text || 'Empty text element'}
+                    </p>
+                    <Badge variant="outline">Text</Badge>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {selectedAsset?.filename}
+                    </p>
+                    <Badge variant="outline">
+                      {selectedAsset?.category}
+                    </Badge>
+                  </>
+                )}
               </div>
 
               {/* Position */}
@@ -1388,6 +1399,111 @@ export function CreationCanvas({
                   </Button>
                 </div>
               </div>
+
+              {/* Text Controls - only show for text elements */}
+              {selectedElementData.type === 'text' && (
+                <div className="space-y-3">
+                  <h4 className="font-medium">Text Properties</h4>
+                  
+                  {/* Text Content */}
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Text Content</label>
+                    <Textarea
+                      value={selectedElementData.text || ''}
+                      onChange={(e) => updateElement(selectedElementData.id, { 
+                        text: e.target.value 
+                      })}
+                      className="h-20 text-sm resize-none"
+                      placeholder="Enter your text..."
+                    />
+                  </div>
+
+                  {/* Font Size and Color */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-muted-foreground block mb-1">Font Size</label>
+                      <Input
+                        type="number"
+                        value={selectedElementData.fontSize || 24}
+                        onChange={(e) => updateElement(selectedElementData.id, { 
+                          fontSize: parseInt(e.target.value) || 12 
+                        })}
+                        className="h-8"
+                        min="8"
+                        max="120"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground block mb-1">Color</label>
+                      <Input
+                        type="color"
+                        value={selectedElementData.color || '#000000'}
+                        onChange={(e) => updateElement(selectedElementData.id, { 
+                          color: e.target.value 
+                        })}
+                        className="h-8"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Font Style Controls */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant={selectedElementData.fontWeight === 'bold' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => updateElement(selectedElementData.id, { 
+                        fontWeight: selectedElementData.fontWeight === 'bold' ? 'normal' : 'bold'
+                      })}
+                      className="flex items-center justify-center"
+                    >
+                      <Bold className="h-4 w-4 mr-1" />
+                      Bold
+                    </Button>
+                    <Button
+                      variant={selectedElementData.fontStyle === 'italic' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => updateElement(selectedElementData.id, { 
+                        fontStyle: selectedElementData.fontStyle === 'italic' ? 'normal' : 'italic'
+                      })}
+                      className="flex items-center justify-center"
+                    >
+                      <Italic className="h-4 w-4 mr-1" />
+                      Italic
+                    </Button>
+                  </div>
+
+                  {/* Text Alignment */}
+                  <div>
+                    <label className="text-xs text-muted-foreground block mb-1">Text Alignment</label>
+                    <div className="grid grid-cols-3 gap-1">
+                      <Button
+                        variant={selectedElementData.textAlign === 'left' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => updateElement(selectedElementData.id, { textAlign: 'left' })}
+                        className="flex items-center justify-center"
+                      >
+                        <AlignLeft className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant={selectedElementData.textAlign === 'center' || !selectedElementData.textAlign ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => updateElement(selectedElementData.id, { textAlign: 'center' })}
+                        className="flex items-center justify-center"
+                      >
+                        <AlignCenter className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant={selectedElementData.textAlign === 'right' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => updateElement(selectedElementData.id, { textAlign: 'right' })}
+                        className="flex items-center justify-center"
+                      >
+                        <AlignRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Actions */}
               <div className="space-y-2">
