@@ -62,6 +62,8 @@ export function CreationCanvas({
   const [touchStart, setTouchStart] = useState<{ x: number; y: number; elementId: string } | null>(null)
   const [elementDrag, setElementDrag] = useState<{ elementId: string; startX: number; startY: number; offsetX: number; offsetY: number } | null>(null)
   const [isResizing, setIsResizing] = useState<{ elementId: string; corner: string; startX: number; startY: number; startWidth: number; startHeight: number } | null>(null)
+  const [editingTextId, setEditingTextId] = useState<string | null>(null)
+  const [editingText, setEditingText] = useState<string>('')
   const [isMobile, setIsMobile] = useState(false)
   const [isTouchDevice, setIsTouchDevice] = useState(false)
   const [viewportWidth, setViewportWidth] = useState(800)
@@ -244,6 +246,47 @@ export function CreationCanvas({
       }
     }
   }, [elementDrag, isResizing, zoom, panOffset])
+
+  // Text editing handlers
+  const handleTextDoubleClick = (elementId: string) => {
+    const element = elements.find(el => el.id === elementId && el.type === 'text')
+    if (element) {
+      setEditingTextId(elementId)
+      setEditingText(element.text || '')
+      setSelectedElement(elementId)
+    }
+  }
+
+  const handleTextSave = () => {
+    if (editingTextId) {
+      updateElement(editingTextId, { text: editingText })
+      setEditingTextId(null)
+      setEditingText('')
+    }
+  }
+
+  const handleTextCancel = () => {
+    setEditingTextId(null)
+    setEditingText('')
+  }
+
+  // Handle escape key to cancel text editing
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (editingTextId) {
+        if (e.key === 'Escape') {
+          handleTextCancel()
+        } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+          handleTextSave()
+        }
+      }
+    }
+
+    if (editingTextId) {
+      document.addEventListener('keydown', handleKeyDown)
+      return () => document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [editingTextId, editingText])
 
   const categories = [
     { id: "all", label: "All Assets", icon: Palette },
@@ -974,27 +1017,53 @@ export function CreationCanvas({
                       e.stopPropagation()
                       setSelectedElement(element.id)
                     }}
+                    onDoubleClick={() => handleTextDoubleClick(element.id)}
                     onMouseDown={(e) => handleElementMouseDown(e, element.id)}
                     onTouchStart={(e) => handleTouchStart(e, element.id)}
                     onTouchMove={handleTouchMove}
                     onTouchEnd={handleTouchEnd}
                   >
-                    <div
-                      className="w-full h-full flex items-center justify-center pointer-events-none"
-                      style={{
-                        fontSize: element.fontSize || 24,
-                        fontFamily: element.fontFamily || 'Arial, sans-serif',
-                        fontWeight: element.fontWeight || 'normal',
-                        fontStyle: element.fontStyle || 'normal',
-                        textAlign: element.textAlign || 'center',
-                        color: element.color || '#000000',
-                        backgroundColor: element.backgroundColor || 'transparent',
-                        padding: '4px',
-                        borderRadius: '4px',
-                      }}
-                    >
-                      {element.text || 'Text'}
-                    </div>
+                    {editingTextId === element.id ? (
+                      // Inline text editing
+                      <div className="w-full h-full flex items-center justify-center">
+                        <textarea
+                          value={editingText}
+                          onChange={(e) => setEditingText(e.target.value)}
+                          onBlur={handleTextSave}
+                          autoFocus
+                          className="w-full h-full resize-none border-none outline-none bg-transparent text-center pointer-events-auto"
+                          style={{
+                            fontSize: element.fontSize || 24,
+                            fontFamily: element.fontFamily || 'Arial, sans-serif',
+                            fontWeight: element.fontWeight || 'normal',
+                            fontStyle: element.fontStyle || 'normal',
+                            textAlign: element.textAlign || 'center',
+                            color: element.color || '#000000',
+                            padding: '4px',
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          onMouseDown={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                    ) : (
+                      // Display text
+                      <div
+                        className="w-full h-full flex items-center justify-center pointer-events-none"
+                        style={{
+                          fontSize: element.fontSize || 24,
+                          fontFamily: element.fontFamily || 'Arial, sans-serif',
+                          fontWeight: element.fontWeight || 'normal',
+                          fontStyle: element.fontStyle || 'normal',
+                          textAlign: element.textAlign || 'center',
+                          color: element.color || '#000000',
+                          backgroundColor: element.backgroundColor || 'transparent',
+                          padding: '4px',
+                          borderRadius: '4px',
+                        }}
+                      >
+                        {element.text || 'Double-click to edit'}
+                      </div>
+                    )}
                     
                     {/* Resize handles for selected text elements on non-touch devices */}
                     {selectedElement === element.id && !isTouchDevice && (
