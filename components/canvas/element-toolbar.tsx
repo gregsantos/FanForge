@@ -1,12 +1,28 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { 
   RotateCw, 
   Copy, 
   Trash2, 
   ChevronUp, 
-  ChevronDown 
+  ChevronDown,
+  Layers,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignStartVertical,
+  AlignCenterVertical,
+  AlignEndVertical
 } from "lucide-react"
 import { CanvasElement } from "@/types"
 
@@ -17,6 +33,7 @@ interface ElementToolbarProps {
   onDelete: () => void
   onLayerUp: () => void
   onLayerDown: () => void
+  onPosition: (position: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom') => void
   canvasRef: React.RefObject<HTMLDivElement>
   zoom: number
   panOffset: { x: number; y: number }
@@ -30,6 +47,7 @@ export function ElementToolbar({
   onDelete,
   onLayerUp,
   onLayerDown,
+  onPosition,
   canvasRef,
   zoom,
   panOffset,
@@ -57,7 +75,7 @@ export function ElementToolbar({
   
   // Final screen position
   const toolbarX = canvasRect.left + centerOffsetX + elementX + (elementWidth / 2)
-  const toolbarY = Math.max(10, canvasRect.top + centerOffsetY + elementY - 45) // Prevent going off top of screen
+  const toolbarY = Math.max(10, canvasRect.top + centerOffsetY + elementY - 95) // Position toolbar much higher to clear rotation handle
 
   return (
     <div
@@ -111,6 +129,62 @@ export function ElementToolbar({
       >
         <Copy className="h-4 w-4" />
       </Button>
+
+      {/* Position Dropdown */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 hover:bg-gray-100 dark:hover:bg-gray-700"
+            title="Position"
+          >
+            <Layers className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="center" className="w-48">
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger className="flex items-center gap-2">
+              <AlignLeft className="h-4 w-4" />
+              Horizontal
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              <DropdownMenuItem onClick={() => onPosition('left')} className="flex items-center gap-2">
+                <AlignLeft className="h-4 w-4" />
+                Align Left
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onPosition('center')} className="flex items-center gap-2">
+                <AlignCenter className="h-4 w-4" />
+                Align Center
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onPosition('right')} className="flex items-center gap-2">
+                <AlignRight className="h-4 w-4" />
+                Align Right
+              </DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger className="flex items-center gap-2">
+              <AlignStartVertical className="h-4 w-4" />
+              Vertical
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              <DropdownMenuItem onClick={() => onPosition('top')} className="flex items-center gap-2">
+                <AlignStartVertical className="h-4 w-4" />
+                Align Top
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onPosition('middle')} className="flex items-center gap-2">
+                <AlignCenterVertical className="h-4 w-4" />
+                Align Middle
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onPosition('bottom')} className="flex items-center gap-2">
+                <AlignEndVertical className="h-4 w-4" />
+                Align Bottom
+              </DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {/* Divider */}
       <div className="w-px h-6 bg-gray-200 dark:bg-gray-600 mx-1" />

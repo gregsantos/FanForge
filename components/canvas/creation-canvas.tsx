@@ -37,6 +37,8 @@ import {
 } from "lucide-react"
 import { ProjectManager } from "./project-manager"
 import { ElementToolbar } from "./element-toolbar"
+import { HoverBoundingBox } from "./hover-bounding-box"
+import { EnhancedSelectionBox } from "./enhanced-selection-box"
 import { 
   CanvasProject, 
   saveProject, 
@@ -92,8 +94,10 @@ export function CreationCanvas({
   const [touchStart, setTouchStart] = useState<{ x: number; y: number; elementId: string } | null>(null)
   const [elementDrag, setElementDrag] = useState<{ elementId: string; startX: number; startY: number; offsetX: number; offsetY: number; initialPos: { x: number; y: number } } | null>(null)
   const [isResizing, setIsResizing] = useState<{ elementId: string; corner: string; startX: number; startY: number; startWidth: number; startHeight: number; initialSize: { width: number; height: number } } | null>(null)
+  const [isRotating, setIsRotating] = useState<{ elementId: string; startAngle: number; initialRotation: number } | null>(null)
   const [editingTextId, setEditingTextId] = useState<string | null>(null)
   const [editingText, setEditingText] = useState<string>('')
+  const [hoveredElement, setHoveredElement] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
   const [isTouchDevice, setIsTouchDevice] = useState(false)
   const [viewportWidth, setViewportWidth] = useState(800)
@@ -252,8 +256,13 @@ export function CreationCanvas({
       
       let newWidth = isResizing.startWidth
       let newHeight = isResizing.startHeight
+      let newX, newY
+      
+      const element = elements.find(el => el.id === isResizing.elementId)
+      if (!element) return
       
       switch (isResizing.corner) {
+        // Corner handles (proportional or free resize)
         case 'se': // bottom-right
           newWidth = Math.max(20, isResizing.startWidth + deltaX / zoom)
           newHeight = Math.max(20, isResizing.startHeight + deltaY / zoom)
@@ -261,18 +270,42 @@ export function CreationCanvas({
         case 'sw': // bottom-left
           newWidth = Math.max(20, isResizing.startWidth - deltaX / zoom)
           newHeight = Math.max(20, isResizing.startHeight + deltaY / zoom)
+          newX = element.x + (isResizing.startWidth - newWidth)
           break
         case 'ne': // top-right
           newWidth = Math.max(20, isResizing.startWidth + deltaX / zoom)
           newHeight = Math.max(20, isResizing.startHeight - deltaY / zoom)
+          newY = element.y + (isResizing.startHeight - newHeight)
           break
         case 'nw': // top-left
           newWidth = Math.max(20, isResizing.startWidth - deltaX / zoom)
           newHeight = Math.max(20, isResizing.startHeight - deltaY / zoom)
+          newX = element.x + (isResizing.startWidth - newWidth)
+          newY = element.y + (isResizing.startHeight - newHeight)
+          break
+        
+        // Side handles (one-directional resize)
+        case 'n': // top
+          newHeight = Math.max(20, isResizing.startHeight - deltaY / zoom)
+          newY = element.y + (isResizing.startHeight - newHeight)
+          break
+        case 's': // bottom
+          newHeight = Math.max(20, isResizing.startHeight + deltaY / zoom)
+          break
+        case 'e': // right
+          newWidth = Math.max(20, isResizing.startWidth + deltaX / zoom)
+          break
+        case 'w': // left
+          newWidth = Math.max(20, isResizing.startWidth - deltaX / zoom)
+          newX = element.x + (isResizing.startWidth - newWidth)
           break
       }
       
-      updateElement(isResizing.elementId, { width: newWidth, height: newHeight })
+      const updates: Partial<CanvasElement> = { width: newWidth, height: newHeight }
+      if (newX !== undefined) updates.x = newX
+      if (newY !== undefined) updates.y = newY
+      
+      updateElement(isResizing.elementId, updates)
     }
   }
 
@@ -290,19 +323,107 @@ export function CreationCanvas({
     setIsResizing(null)
   }
 
+  // Rotation handlers
+  const handleRotationMouseDown = (e: React.MouseEvent, elementId: string) => {
+    e.stopPropagation()
+    const element = elements.find(el => el.id === elementId)
+    if (element && canvasRef.current) {
+      const rect = canvasRef.current.getBoundingClientRect()
+      
+      // Account for canvas scaling and centering
+      const canvasWidth = 800
+      const canvasHeight = 600
+      const scaledWidth = canvasWidth * canvasScale
+      const scaledHeight = canvasHeight * canvasScale
+      const centerOffsetX = (rect.width - scaledWidth) / 2
+      const centerOffsetY = (rect.height - scaledHeight) / 2
+      
+      // Element center position with proper scaling
+      const elementCenterX = (element.x + element.width / 2) * zoom * canvasScale + (panOffset.x * canvasScale)
+      const elementCenterY = (element.y + element.height / 2) * zoom * canvasScale + (panOffset.y * canvasScale)
+      
+      // Final screen position
+      const centerX = rect.left + centerOffsetX + elementCenterX
+      const centerY = rect.top + centerOffsetY + elementCenterY
+      
+      const startAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI)
+      
+      setIsRotating({
+        elementId,
+        startAngle,
+        initialRotation: element.rotation
+      })
+    }
+  }
+
+  const handleRotationMouseMove = (e: MouseEvent) => {
+    if (isRotating && canvasRef.current) {
+      const element = elements.find(el => el.id === isRotating.elementId)
+      if (element) {
+        const rect = canvasRef.current.getBoundingClientRect()
+        
+        // Account for canvas scaling and centering
+        const canvasWidth = 800
+        const canvasHeight = 600
+        const scaledWidth = canvasWidth * canvasScale
+        const scaledHeight = canvasHeight * canvasScale
+        const centerOffsetX = (rect.width - scaledWidth) / 2
+        const centerOffsetY = (rect.height - scaledHeight) / 2
+        
+        // Element center position with proper scaling
+        const elementCenterX = (element.x + element.width / 2) * zoom * canvasScale + (panOffset.x * canvasScale)
+        const elementCenterY = (element.y + element.height / 2) * zoom * canvasScale + (panOffset.y * canvasScale)
+        
+        // Final screen position
+        const centerX = rect.left + centerOffsetX + elementCenterX
+        const centerY = rect.top + centerOffsetY + elementCenterY
+        
+        const currentAngle = Math.atan2(e.clientY - centerY, e.clientX - centerX) * (180 / Math.PI)
+        const angleDiff = currentAngle - isRotating.startAngle
+        let newRotation = isRotating.initialRotation + angleDiff
+        
+        // Snap to 15-degree increments when shift is held
+        if (e.shiftKey) {
+          newRotation = Math.round(newRotation / 15) * 15
+        }
+        
+        // Normalize angle to 0-360 range
+        newRotation = ((newRotation % 360) + 360) % 360
+        
+        updateElement(isRotating.elementId, { rotation: newRotation })
+      }
+    }
+  }
+
+  const handleRotationMouseUp = () => {
+    if (isRotating) {
+      const element = elements.find(el => el.id === isRotating.elementId)
+      if (element && element.rotation !== isRotating.initialRotation) {
+        recordAction(createRotateAction(
+          isRotating.elementId,
+          isRotating.initialRotation,
+          element.rotation
+        ))
+      }
+    }
+    setIsRotating(null)
+  }
+
   // Global mouse event listeners
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       handleElementMouseMove(e)
       handleResizeMouseMove(e)
+      handleRotationMouseMove(e)
     }
 
     const handleMouseUp = () => {
       handleElementMouseUp()
       handleResizeMouseUp()
+      handleRotationMouseUp()
     }
 
-    if (elementDrag || isResizing) {
+    if (elementDrag || isResizing || isRotating) {
       document.addEventListener('mousemove', handleMouseMove)
       document.addEventListener('mouseup', handleMouseUp)
       
@@ -311,7 +432,7 @@ export function CreationCanvas({
         document.removeEventListener('mouseup', handleMouseUp)
       }
     }
-  }, [elementDrag, isResizing, zoom, panOffset])
+  }, [elementDrag, isResizing, isRotating, zoom, panOffset])
 
   // Text editing handlers
   const handleTextDoubleClick = (elementId: string) => {
@@ -731,6 +852,45 @@ export function CreationCanvas({
   }, [isMobile, viewportWidth, zoom])
 
   const deleteElement = deleteElementWithHistory
+
+  // Position alignment handler
+  const handlePosition = useCallback((elementId: string, position: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom') => {
+    const element = elements.find(el => el.id === elementId)
+    if (!element) return
+
+    const canvasWidth = 800
+    const canvasHeight = 600
+    let newX = element.x
+    let newY = element.y
+
+    // Calculate new position based on canvas dimensions
+    switch (position) {
+      case 'left':
+        newX = 20 // Small padding from edge
+        break
+      case 'center':
+        newX = (canvasWidth - element.width) / 2
+        break
+      case 'right':
+        newX = canvasWidth - element.width - 20 // Small padding from edge
+        break
+      case 'top':
+        newY = 20 // Small padding from edge
+        break
+      case 'middle':
+        newY = (canvasHeight - element.height) / 2
+        break
+      case 'bottom':
+        newY = canvasHeight - element.height - 20 // Small padding from edge
+        break
+    }
+
+    const oldPosition = { x: element.x, y: element.y }
+    const newPosition = { x: newX, y: newY }
+    
+    updateElement(elementId, newPosition)
+    recordAction(createMoveAction(elementId, oldPosition, newPosition))
+  }, [elements, updateElement, recordAction])
 
   // Pan controls
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -1337,95 +1497,135 @@ export function CreationCanvas({
                 if (!asset) return null
                 
                 return (
-                  <div
-                    key={element.id}
-                    className={`canvas-element absolute ${
-                      selectedElement === element.id ? 'selected' : ''
-                    } ${elementDrag?.elementId === element.id ? 'cursor-grabbing' : isTouchDevice ? 'cursor-pointer' : 'cursor-grab'}`}
-                    style={{
-                      left: element.x,
-                      top: element.y,
-                      width: element.width,
-                      height: element.height,
-                      transform: `rotate(${element.rotation}deg)`,
-                      zIndex: element.zIndex,
-                      opacity: element.opacity || 1,
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setSelectedElement(element.id)
-                    }}
-                    onMouseDown={(e) => handleElementMouseDown(e, element.id)}
-                    onTouchStart={(e) => handleTouchStart(e, element.id)}
-                    onTouchMove={handleTouchMove}
-                    onTouchEnd={handleTouchEnd}
-                  >
-                    <img
-                      src={asset.url}
-                      alt={asset.filename}
-                      className="w-full h-full object-cover pointer-events-none"
-                      draggable={false}
-                    />
-                    
-                    {/* Resize handles for selected elements on non-touch devices */}
-                    {selectedElement === element.id && !isTouchDevice && (
-                      <>
-                        {/* Corner resize handles */}
-                        <div
-                          className="absolute w-3 h-3 bg-primary border border-white rounded-sm cursor-nw-resize -top-1 -left-1"
-                          onMouseDown={(e) => handleResizeMouseDown(e, element.id, 'nw')}
+                  <div key={element.id} className="relative">
+                    {/* Main element */}
+                    <div
+                      className={`canvas-element absolute ${
+                        selectedElement === element.id ? 'selected' : ''
+                      } ${elementDrag?.elementId === element.id ? 'cursor-grabbing' : isTouchDevice ? 'cursor-pointer' : 'cursor-grab'}`}
+                      style={{
+                        left: element.x,
+                        top: element.y,
+                        width: element.width,
+                        height: element.height,
+                        transform: `rotate(${element.rotation}deg)`,
+                        zIndex: element.zIndex,
+                        opacity: element.opacity || 1,
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSelectedElement(element.id)
+                      }}
+                      onMouseDown={(e) => handleElementMouseDown(e, element.id)}
+                      onMouseEnter={() => {
+                        if (selectedElement !== element.id) {
+                          setHoveredElement(element.id)
+                        }
+                      }}
+                      onMouseLeave={() => {
+                        setHoveredElement(null)
+                      }}
+                      onTouchStart={(e) => handleTouchStart(e, element.id)}
+                      onTouchMove={handleTouchMove}
+                      onTouchEnd={handleTouchEnd}
+                    >
+                      <img
+                        src={asset.url}
+                        alt={asset.filename}
+                        className="w-full h-full object-cover pointer-events-none"
+                        draggable={false}
+                      />
+                    </div>
+
+                    {/* Hover bounding box for non-selected elements */}
+                    {hoveredElement === element.id && selectedElement !== element.id && (
+                      <HoverBoundingBox element={element} zoom={zoom} />
+                    )}
+
+                    {/* Enhanced selection box for selected elements */}
+                    {selectedElement === element.id && (
+                      <div
+                        className="absolute pointer-events-none"
+                        style={{
+                          left: element.x,
+                          top: element.y,
+                          width: element.width,
+                          height: element.height,
+                          transform: `rotate(${element.rotation}deg)`,
+                          zIndex: element.zIndex + 1000,
+                        }}
+                      >
+                        <EnhancedSelectionBox
+                          element={element}
+                          onResizeMouseDown={handleResizeMouseDown}
+                          onRotationMouseDown={handleRotationMouseDown}
+                          isTouchDevice={isTouchDevice}
                         />
-                        <div
-                          className="absolute w-3 h-3 bg-primary border border-white rounded-sm cursor-ne-resize -top-1 -right-1"
-                          onMouseDown={(e) => handleResizeMouseDown(e, element.id, 'ne')}
-                        />
-                        <div
-                          className="absolute w-3 h-3 bg-primary border border-white rounded-sm cursor-sw-resize -bottom-1 -left-1"
-                          onMouseDown={(e) => handleResizeMouseDown(e, element.id, 'sw')}
-                        />
-                        <div
-                          className="absolute w-3 h-3 bg-primary border border-white rounded-sm cursor-se-resize -bottom-1 -right-1"
-                          onMouseDown={(e) => handleResizeMouseDown(e, element.id, 'se')}
-                        />
-                      </>
+                      </div>
                     )}
                   </div>
                 )
               } else if (element.type === 'text') {
                 return (
-                  <div
-                    key={element.id}
-                    className={`canvas-element absolute ${
-                      selectedElement === element.id ? 'selected' : ''
-                    } ${elementDrag?.elementId === element.id ? 'cursor-grabbing' : isTouchDevice ? 'cursor-pointer' : 'cursor-grab'}`}
-                    style={{
-                      left: element.x,
-                      top: element.y,
-                      width: element.width,
-                      height: element.height,
-                      transform: `rotate(${element.rotation}deg)`,
-                      zIndex: element.zIndex,
-                      opacity: element.opacity || 1,
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setSelectedElement(element.id)
-                    }}
-                    onDoubleClick={() => handleTextDoubleClick(element.id)}
-                    onMouseDown={(e) => handleElementMouseDown(e, element.id)}
-                    onTouchStart={(e) => handleTouchStart(e, element.id)}
-                    onTouchMove={handleTouchMove}
-                    onTouchEnd={handleTouchEnd}
-                  >
-                    {editingTextId === element.id ? (
-                      // Inline text editing
-                      <div className="w-full h-full flex items-center justify-center">
-                        <textarea
-                          value={editingText}
-                          onChange={(e) => setEditingText(e.target.value)}
-                          onBlur={handleTextSave}
-                          autoFocus
-                          className="w-full h-full resize-none border-none outline-none bg-transparent text-center pointer-events-auto"
+                  <div key={element.id} className="relative">
+                    {/* Main element */}
+                    <div
+                      className={`canvas-element absolute ${
+                        selectedElement === element.id ? 'selected' : ''
+                      } ${elementDrag?.elementId === element.id ? 'cursor-grabbing' : isTouchDevice ? 'cursor-pointer' : 'cursor-grab'}`}
+                      style={{
+                        left: element.x,
+                        top: element.y,
+                        width: element.width,
+                        height: element.height,
+                        transform: `rotate(${element.rotation}deg)`,
+                        zIndex: element.zIndex,
+                        opacity: element.opacity || 1,
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSelectedElement(element.id)
+                      }}
+                      onDoubleClick={() => handleTextDoubleClick(element.id)}
+                      onMouseDown={(e) => handleElementMouseDown(e, element.id)}
+                      onMouseEnter={() => {
+                        if (selectedElement !== element.id) {
+                          setHoveredElement(element.id)
+                        }
+                      }}
+                      onMouseLeave={() => {
+                        setHoveredElement(null)
+                      }}
+                      onTouchStart={(e) => handleTouchStart(e, element.id)}
+                      onTouchMove={handleTouchMove}
+                      onTouchEnd={handleTouchEnd}
+                    >
+                      {editingTextId === element.id ? (
+                        // Inline text editing
+                        <div className="w-full h-full flex items-center justify-center">
+                          <textarea
+                            value={editingText}
+                            onChange={(e) => setEditingText(e.target.value)}
+                            onBlur={handleTextSave}
+                            autoFocus
+                            className="w-full h-full resize-none border-none outline-none bg-transparent text-center pointer-events-auto"
+                            style={{
+                              fontSize: element.fontSize || 24,
+                              fontFamily: element.fontFamily || 'Arial, sans-serif',
+                              fontWeight: element.fontWeight || 'normal',
+                              fontStyle: element.fontStyle || 'normal',
+                              textAlign: element.textAlign || 'center',
+                              color: element.color || '#000000',
+                              padding: '4px',
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            onMouseDown={(e) => e.stopPropagation()}
+                          />
+                        </div>
+                      ) : (
+                        // Display text
+                        <div
+                          className="w-full h-full flex items-center justify-center pointer-events-none"
                           style={{
                             fontSize: element.fontSize || 24,
                             fontFamily: element.fontFamily || 'Arial, sans-serif',
@@ -1433,53 +1633,41 @@ export function CreationCanvas({
                             fontStyle: element.fontStyle || 'normal',
                             textAlign: element.textAlign || 'center',
                             color: element.color || '#000000',
+                            backgroundColor: element.backgroundColor || 'transparent',
                             padding: '4px',
+                            borderRadius: '4px',
                           }}
-                          onClick={(e) => e.stopPropagation()}
-                          onMouseDown={(e) => e.stopPropagation()}
-                        />
-                      </div>
-                    ) : (
-                      // Display text
+                        >
+                          {element.text || 'Double-click to edit'}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Hover bounding box for non-selected elements */}
+                    {hoveredElement === element.id && selectedElement !== element.id && (
+                      <HoverBoundingBox element={element} zoom={zoom} />
+                    )}
+
+                    {/* Enhanced selection box for selected elements */}
+                    {selectedElement === element.id && (
                       <div
-                        className="w-full h-full flex items-center justify-center pointer-events-none"
+                        className="absolute pointer-events-none"
                         style={{
-                          fontSize: element.fontSize || 24,
-                          fontFamily: element.fontFamily || 'Arial, sans-serif',
-                          fontWeight: element.fontWeight || 'normal',
-                          fontStyle: element.fontStyle || 'normal',
-                          textAlign: element.textAlign || 'center',
-                          color: element.color || '#000000',
-                          backgroundColor: element.backgroundColor || 'transparent',
-                          padding: '4px',
-                          borderRadius: '4px',
+                          left: element.x,
+                          top: element.y,
+                          width: element.width,
+                          height: element.height,
+                          transform: `rotate(${element.rotation}deg)`,
+                          zIndex: element.zIndex + 1000,
                         }}
                       >
-                        {element.text || 'Double-click to edit'}
+                        <EnhancedSelectionBox
+                          element={element}
+                          onResizeMouseDown={handleResizeMouseDown}
+                          onRotationMouseDown={handleRotationMouseDown}
+                          isTouchDevice={isTouchDevice}
+                        />
                       </div>
-                    )}
-                    
-                    {/* Resize handles for selected text elements on non-touch devices */}
-                    {selectedElement === element.id && !isTouchDevice && (
-                      <>
-                        {/* Corner resize handles */}
-                        <div
-                          className="absolute w-3 h-3 bg-primary border border-white rounded-sm cursor-nw-resize -top-1 -left-1"
-                          onMouseDown={(e) => handleResizeMouseDown(e, element.id, 'nw')}
-                        />
-                        <div
-                          className="absolute w-3 h-3 bg-primary border border-white rounded-sm cursor-ne-resize -top-1 -right-1"
-                          onMouseDown={(e) => handleResizeMouseDown(e, element.id, 'ne')}
-                        />
-                        <div
-                          className="absolute w-3 h-3 bg-primary border border-white rounded-sm cursor-sw-resize -bottom-1 -left-1"
-                          onMouseDown={(e) => handleResizeMouseDown(e, element.id, 'sw')}
-                        />
-                        <div
-                          className="absolute w-3 h-3 bg-primary border border-white rounded-sm cursor-se-resize -bottom-1 -right-1"
-                          onMouseDown={(e) => handleResizeMouseDown(e, element.id, 'se')}
-                        />
-                      </>
                     )}
                   </div>
                 )
@@ -1500,6 +1688,7 @@ export function CreationCanvas({
           onDelete={() => deleteElementWithHistory(selectedElementData.id)}
           onLayerUp={() => moveElementLayer(selectedElementData.id, 'up')}
           onLayerDown={() => moveElementLayer(selectedElementData.id, 'down')}
+          onPosition={(position) => handlePosition(selectedElementData.id, position)}
           canvasRef={canvasRef}
           zoom={zoom}
           panOffset={panOffset}
