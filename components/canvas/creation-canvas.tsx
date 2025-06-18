@@ -29,8 +29,18 @@ import {
   Italic,
   AlignLeft,
   AlignCenter,
-  AlignRight
+  AlignRight,
+  FolderOpen,
+  Clock
 } from "lucide-react"
+import { ProjectManager } from "./project-manager"
+import { 
+  CanvasProject, 
+  saveProject, 
+  generateProjectId, 
+  checkForConflicts,
+  hasStorageSpace 
+} from "@/lib/canvas-storage"
 
 interface CreationCanvasProps {
   assets: Asset[]
@@ -68,6 +78,16 @@ export function CreationCanvas({
   const [isTouchDevice, setIsTouchDevice] = useState(false)
   const [viewportWidth, setViewportWidth] = useState(800)
   const [screenSize, setScreenSize] = useState<'mobile' | 'tablet' | 'desktop'>('desktop')
+  
+  // Local storage state
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null)
+  const [projectTitle, setProjectTitle] = useState<string>('')
+  const [isProjectManagerOpen, setIsProjectManagerOpen] = useState(false)
+  const [lastSaveTime, setLastSaveTime] = useState<Date | null>(null)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [lastSavedElements, setLastSavedElements] = useState<CanvasElement[]>([])
+  const [lastAutoSaveTime, setLastAutoSaveTime] = useState<Date | null>(null)
+  
   const canvasRef = useRef<HTMLDivElement>(null)
   const canvasContainerRef = useRef<HTMLDivElement>(null)
 
@@ -327,18 +347,122 @@ export function CreationCanvas({
     setVisibleAssets(filteredAssets.slice(startIndex, endIndex))
   }, [filteredAssets, assetScrollTop])
 
-  // Auto-save functionality with debouncing
+  // Local storage functions
+  const saveToLocalStorage = useCallback(() => {
+    try {
+      if (!hasStorageSpace()) {
+        console.warn('Not enough storage space for local backup')
+        return
+      }
+
+      const projectId = currentProjectId || generateProjectId()
+      const title = projectTitle || `${campaignTitle} - ${new Date().toLocaleDateString()}`
+      
+      const project: Omit<CanvasProject, 'updatedAt' | 'thumbnail'> = {
+        id: projectId,
+        title,
+        campaignTitle,
+        elements,
+        canvasSize: { width: 800, height: 600 },
+        version: '1.0',
+        createdAt: lastSaveTime || new Date()
+      }
+      
+      saveProject(project)
+      
+      if (!currentProjectId) {
+        setCurrentProjectId(projectId)
+      }
+      if (!projectTitle) {
+        setProjectTitle(title)
+      }
+      
+      const now = new Date()
+      setLastSaveTime(now)
+      setLastAutoSaveTime(now) // Also update autosave time to prevent immediate autosave
+      setLastSavedElements([...elements])
+      setHasUnsavedChanges(false)
+    } catch (error) {
+      console.error('Failed to save to local storage:', error)
+    }
+  }, [currentProjectId, projectTitle, campaignTitle, elements, lastSaveTime])
+
+  const handleLoadProject = useCallback((project: CanvasProject) => {
+    try {
+      // Check for conflicts
+      if (currentProjectId && hasUnsavedChanges) {
+        const hasConflict = checkForConflicts(project.id, project.updatedAt)
+        if (hasConflict) {
+          const shouldContinue = confirm(
+            'This project has been modified elsewhere. Loading it will overwrite your current changes. Continue?'
+          )
+          if (!shouldContinue) return
+        }
+      }
+      
+      setElements(project.elements)
+      setCurrentProjectId(project.id)
+      setProjectTitle(project.title)
+      setLastSaveTime(project.updatedAt)
+      setLastSavedElements([...project.elements])
+      setHasUnsavedChanges(false)
+      setSelectedElement(null)
+    } catch (error) {
+      console.error('Failed to load project:', error)
+      alert('Failed to load project')
+    }
+  }, [currentProjectId, hasUnsavedChanges])
+
+  const handleNewProject = useCallback(() => {
+    if (hasUnsavedChanges) {
+      const shouldContinue = confirm('You have unsaved changes. Create a new project anyway?')
+      if (!shouldContinue) return
+    }
+    
+    setElements([])
+    setCurrentProjectId(null)
+    setProjectTitle('')
+    setLastSaveTime(null)
+    setLastSavedElements([])
+    setHasUnsavedChanges(false)
+    setSelectedElement(null)
+  }, [hasUnsavedChanges])
+
+  // Auto-save functionality with longer debouncing to reduce frequency
   useEffect(() => {
-    if (onAutoSave && elements.length > 0) {
+    // Only auto-save if there are elements and changes since last save
+    if (elements.length > 0 && hasUnsavedChanges) {
       const timer = setTimeout(() => {
-        setIsAutoSaving(true)
-        onAutoSave(elements)
-        setTimeout(() => setIsAutoSaving(false), 1000)
-      }, 2000) // Auto-save after 2 seconds of inactivity
+        // Check if we still have unsaved changes and enough time has passed since last autosave
+        const now = new Date()
+        const timeSinceLastAutoSave = lastAutoSaveTime ? now.getTime() - lastAutoSaveTime.getTime() : Infinity
+        const minTimeBetweenSaves = 30000 // Minimum 30 seconds between autosaves
+        
+        if (hasUnsavedChanges && timeSinceLastAutoSave >= minTimeBetweenSaves) {
+          setIsAutoSaving(true)
+          setLastAutoSaveTime(now)
+          
+          // Save to external system if provided
+          if (onAutoSave) {
+            onAutoSave(elements)
+          }
+          
+          // Save to local storage
+          saveToLocalStorage()
+          
+          setTimeout(() => setIsAutoSaving(false), 1000)
+        }
+      }, 10000) // Auto-save after 10 seconds of inactivity
       
       return () => clearTimeout(timer)
     }
-  }, [elements, onAutoSave])
+  }, [elements, onAutoSave, saveToLocalStorage, hasUnsavedChanges, lastAutoSaveTime])
+
+  // Track unsaved changes by comparing current elements with last saved state
+  useEffect(() => {
+    const hasChanges = JSON.stringify(elements) !== JSON.stringify(lastSavedElements)
+    setHasUnsavedChanges(hasChanges)
+  }, [elements, lastSavedElements])
 
   // Debounce element updates for performance
   const debouncedUpdateElement = useCallback(
@@ -815,15 +939,41 @@ export function CreationCanvas({
           
           <div className="flex items-center gap-2 flex-shrink-0">
             
+            {/* Project Management */}
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setIsProjectManagerOpen(true)}
+              title="Open Project Manager"
+            >
+              <FolderOpen className="h-4 w-4 mr-1" />
+              <span className="hidden xl:inline">Projects</span>
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleNewProject}
+              title={hasUnsavedChanges ? "Create new project (will prompt to save changes)" : "Create new project"}
+              className="hidden lg:flex"
+            >
+              New
+            </Button>
+            
+            <div className="border-l h-6 mx-2" />
+            
             {!isMobile && (
               <Button 
                 variant="outline" 
                 size="sm"
+                onClick={saveToLocalStorage}
                 disabled={isAutoSaving}
                 className="hidden lg:flex"
+                title={`Manual save${lastSaveTime ? ` (last: ${lastSaveTime.toLocaleTimeString()})` : ''}. Auto-saves every 10s after changes, minimum 30s apart.`}
               >
                 <Save className={`h-4 w-4 mr-1 ${isAutoSaving ? 'animate-spin' : ''}`} />
                 <span className="hidden xl:inline">{isAutoSaving ? 'Saving...' : 'Save'}</span>
+                {hasUnsavedChanges && <div className="w-2 h-2 bg-orange-500 rounded-full ml-1" />}
               </Button>
             )}
             
@@ -1560,6 +1710,14 @@ export function CreationCanvas({
         </CardContent>
         </div>
       )}
+
+      {/* Project Manager Dialog */}
+      <ProjectManager
+        isOpen={isProjectManagerOpen}
+        onOpenChange={setIsProjectManagerOpen}
+        onLoadProject={handleLoadProject}
+        currentProjectId={currentProjectId || undefined}
+      />
     </div>
   )
 }
