@@ -31,9 +31,12 @@ import {
   AlignCenter,
   AlignRight,
   FolderOpen,
-  Clock
+  Clock,
+  Undo2,
+  Redo2
 } from "lucide-react"
 import { ProjectManager } from "./project-manager"
+import { ElementToolbar } from "./element-toolbar"
 import { 
   CanvasProject, 
   saveProject, 
@@ -41,6 +44,23 @@ import {
   checkForConflicts,
   hasStorageSpace 
 } from "@/lib/canvas-storage"
+import {
+  ActionHistory,
+  createActionHistory,
+  addAction,
+  canUndo,
+  canRedo,
+  undo,
+  redo,
+  applyActionToElements,
+  createMoveAction,
+  createRotateAction,
+  createResizeAction,
+  createUpdateAction,
+  createDeleteAction,
+  createCreateAction,
+  createCopyAction
+} from "@/lib/canvas-actions"
 
 interface CreationCanvasProps {
   assets: Asset[]
@@ -70,8 +90,8 @@ export function CreationCanvas({
   const [isAssetPanelOpen, setIsAssetPanelOpen] = useState(false)
   const [isPropertiesPanelOpen, setIsPropertiesPanelOpen] = useState(false)
   const [touchStart, setTouchStart] = useState<{ x: number; y: number; elementId: string } | null>(null)
-  const [elementDrag, setElementDrag] = useState<{ elementId: string; startX: number; startY: number; offsetX: number; offsetY: number } | null>(null)
-  const [isResizing, setIsResizing] = useState<{ elementId: string; corner: string; startX: number; startY: number; startWidth: number; startHeight: number } | null>(null)
+  const [elementDrag, setElementDrag] = useState<{ elementId: string; startX: number; startY: number; offsetX: number; offsetY: number; initialPos: { x: number; y: number } } | null>(null)
+  const [isResizing, setIsResizing] = useState<{ elementId: string; corner: string; startX: number; startY: number; startWidth: number; startHeight: number; initialSize: { width: number; height: number } } | null>(null)
   const [editingTextId, setEditingTextId] = useState<string | null>(null)
   const [editingText, setEditingText] = useState<string>('')
   const [isMobile, setIsMobile] = useState(false)
@@ -87,6 +107,10 @@ export function CreationCanvas({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [lastSavedElements, setLastSavedElements] = useState<CanvasElement[]>([])
   const [lastAutoSaveTime, setLastAutoSaveTime] = useState<Date | null>(null)
+  
+  // Action history state
+  const [actionHistory, setActionHistory] = useState<ActionHistory>(() => createActionHistory())
+  const [clipboard, setClipboard] = useState<CanvasElement | null>(null)
   
   const canvasRef = useRef<HTMLDivElement>(null)
   const canvasContainerRef = useRef<HTMLDivElement>(null)
@@ -172,7 +196,8 @@ export function CreationCanvas({
           startX: e.clientX,
           startY: e.clientY,
           offsetX: (e.clientX - rect.left - panOffset.x) / zoom - element.x,
-          offsetY: (e.clientY - rect.top - panOffset.y) / zoom - element.y
+          offsetY: (e.clientY - rect.top - panOffset.y) / zoom - element.y,
+          initialPos: { x: element.x, y: element.y }
         })
         setSelectedElement(elementId)
       }
@@ -190,6 +215,16 @@ export function CreationCanvas({
   }
 
   const handleElementMouseUp = () => {
+    if (elementDrag) {
+      const element = elements.find(el => el.id === elementDrag.elementId)
+      if (element && (element.x !== elementDrag.initialPos.x || element.y !== elementDrag.initialPos.y)) {
+        recordAction(createMoveAction(
+          elementDrag.elementId,
+          elementDrag.initialPos,
+          { x: element.x, y: element.y }
+        ))
+      }
+    }
     setElementDrag(null)
   }
 
@@ -204,7 +239,8 @@ export function CreationCanvas({
         startX: e.clientX,
         startY: e.clientY,
         startWidth: element.width,
-        startHeight: element.height
+        startHeight: element.height,
+        initialSize: { width: element.width, height: element.height }
       })
     }
   }
@@ -241,6 +277,16 @@ export function CreationCanvas({
   }
 
   const handleResizeMouseUp = () => {
+    if (isResizing) {
+      const element = elements.find(el => el.id === isResizing.elementId)
+      if (element && (element.width !== isResizing.initialSize.width || element.height !== isResizing.initialSize.height)) {
+        recordAction(createResizeAction(
+          isResizing.elementId,
+          isResizing.initialSize,
+          { width: element.width, height: element.height }
+        ))
+      }
+    }
     setIsResizing(null)
   }
 
@@ -524,6 +570,7 @@ export function CreationCanvas({
 
       setElements(prev => [...prev, newElement])
       setSelectedElement(newElement.id)
+      recordAction(createCreateAction(newElement))
     }
   }, [assets, elements.length, zoom, panOffset])
 
@@ -546,11 +593,6 @@ export function CreationCanvas({
 
   const updateElement = debouncedUpdateElement
 
-  const deleteElement = (id: string) => {
-    setElements(prev => prev.filter(el => el.id !== id))
-    setSelectedElement(null)
-  }
-
   // Memoize selected element data for performance
   const selectedElementData = useMemo(() => {
     return selectedElement 
@@ -563,6 +605,132 @@ export function CreationCanvas({
       ? assets.find(a => a.id === selectedElementData.assetId)
       : null
   }, [selectedElementData, assets])
+
+  // Action recording functions
+  const recordAction = useCallback((action: Omit<import('@/lib/canvas-actions').CanvasAction, 'id' | 'timestamp'>) => {
+    setActionHistory(prev => addAction(prev, action))
+  }, [])
+
+  const handleUndo = useCallback(() => {
+    if (canUndo(actionHistory)) {
+      const { history: newHistory, action } = undo(actionHistory)
+      if (action) {
+        const newElements = applyActionToElements(elements, action, true)
+        setElements(newElements)
+        setActionHistory(newHistory)
+        setSelectedElement(null)
+      }
+    }
+  }, [actionHistory, elements])
+
+  const handleRedo = useCallback(() => {
+    if (canRedo(actionHistory)) {
+      const { history: newHistory, action } = redo(actionHistory)
+      if (action) {
+        const newElements = applyActionToElements(elements, action, false)
+        setElements(newElements)
+        setActionHistory(newHistory)
+        setSelectedElement(null)
+      }
+    }
+  }, [actionHistory, elements])
+
+  // Enhanced element manipulation functions
+  const rotateElement = useCallback((elementId: string) => {
+    const element = elements.find(el => el.id === elementId)
+    if (element) {
+      const previousRotation = element.rotation
+      const newRotation = (previousRotation + 90) % 360
+      
+      setElements(prev => 
+        prev.map(el => el.id === elementId ? { ...el, rotation: newRotation } : el)
+      )
+      
+      recordAction(createRotateAction(elementId, previousRotation, newRotation))
+    }
+  }, [elements, recordAction])
+
+  const copyElement = useCallback((elementId: string) => {
+    const element = elements.find(el => el.id === elementId)
+    if (element) {
+      const copiedElement: CanvasElement = {
+        ...element,
+        id: generateId(),
+        x: element.x + 20,
+        y: element.y + 20,
+        zIndex: Math.max(...elements.map(el => el.zIndex)) + 1
+      }
+      
+      setElements(prev => [...prev, copiedElement])
+      setSelectedElement(copiedElement.id)
+      setClipboard(element)
+      
+      recordAction(createCopyAction(element, copiedElement))
+    }
+  }, [elements, recordAction])
+
+  const deleteElementWithHistory = useCallback((elementId: string) => {
+    const element = elements.find(el => el.id === elementId)
+    if (element) {
+      setElements(prev => prev.filter(el => el.id !== elementId))
+      setSelectedElement(null)
+      
+      recordAction(createDeleteAction(element))
+    }
+  }, [elements, recordAction])
+
+  const moveElementLayer = useCallback((elementId: string, direction: 'up' | 'down') => {
+    const element = elements.find(el => el.id === elementId)
+    if (!element) return
+
+    const sortedElements = [...elements].sort((a, b) => a.zIndex - b.zIndex)
+    const currentIndex = sortedElements.findIndex(el => el.id === elementId)
+    
+    let newZIndex = element.zIndex
+    
+    if (direction === 'up' && currentIndex < sortedElements.length - 1) {
+      newZIndex = sortedElements[currentIndex + 1].zIndex + 1
+    } else if (direction === 'down' && currentIndex > 0) {
+      newZIndex = sortedElements[currentIndex - 1].zIndex - 1
+    }
+    
+    if (newZIndex !== element.zIndex) {
+      setElements(prev => 
+        prev.map(el => el.id === elementId ? { ...el, zIndex: newZIndex } : el)
+      )
+      
+      recordAction(createUpdateAction(elementId, { zIndex: element.zIndex }, { zIndex: newZIndex }))
+    }
+  }, [elements, recordAction])
+
+  // Calculate current canvas scale for toolbar positioning
+  const canvasScale = useMemo(() => {
+    if (isMobile) {
+      return 1 // Mobile uses no scaling
+    } else {
+      // Desktop scaling calculation (same as in canvas style)
+      const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 800
+      
+      let panelWidth = 224
+      if (viewportWidth >= 1024) panelWidth = 256
+      if (viewportWidth >= 1280) panelWidth = 288
+      panelWidth = Math.min(panelWidth, 288)
+      
+      const totalPanelWidth = panelWidth * 2
+      const padding = 64
+      
+      const availableWidth = Math.max(400, viewportWidth - totalPanelWidth - padding)
+      const availableHeight = Math.max(300, windowHeight - 200)
+      
+      const scaleX = availableWidth / 800
+      const scaleY = availableHeight / 600
+      const autoScale = Math.min(scaleX, scaleY, 1.0)
+      
+      return zoom * autoScale
+    }
+  }, [isMobile, viewportWidth, zoom])
+
+  const deleteElement = deleteElementWithHistory
 
   // Pan controls
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -589,19 +757,71 @@ export function CreationCanvas({
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts when editing text
+      if (editingTextId) return
+
       if (e.key === 'Delete' && selectedElement) {
-        deleteElement(selectedElement)
+        deleteElementWithHistory(selectedElement)
       } else if (e.key === 'Escape') {
         setSelectedElement(null)
       } else if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()
         handleSave()
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault()
+        handleUndo()
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault()
+        handleRedo()
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedElement) {
+        e.preventDefault()
+        const element = elements.find(el => el.id === selectedElement)
+        if (element) {
+          setClipboard(element)
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'v' && clipboard) {
+        e.preventDefault()
+        copyElement(selectedElement || clipboard.id)
+      } else if (selectedElement && !e.ctrlKey && !e.metaKey) {
+        // Arrow key movement for precise positioning
+        const element = elements.find(el => el.id === selectedElement)
+        if (element) {
+          const moveDistance = e.shiftKey ? 10 : 1
+          let newX = element.x
+          let newY = element.y
+          
+          switch (e.key) {
+            case 'ArrowLeft':
+              e.preventDefault()
+              newX = Math.max(0, element.x - moveDistance)
+              break
+            case 'ArrowRight':
+              e.preventDefault()
+              newX = element.x + moveDistance
+              break
+            case 'ArrowUp':
+              e.preventDefault()
+              newY = Math.max(0, element.y - moveDistance)
+              break
+            case 'ArrowDown':
+              e.preventDefault()
+              newY = element.y + moveDistance
+              break
+          }
+          
+          if (newX !== element.x || newY !== element.y) {
+            setElements(prev => 
+              prev.map(el => el.id === selectedElement ? { ...el, x: newX, y: newY } : el)
+            )
+            recordAction(createMoveAction(selectedElement, { x: element.x, y: element.y }, { x: newX, y: newY }))
+          }
+        }
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedElement])
+  }, [selectedElement, editingTextId, elements, clipboard, handleUndo, handleRedo, deleteElementWithHistory, copyElement, recordAction])
 
   const handleSave = () => {
     onSave(elements)
@@ -639,6 +859,7 @@ export function CreationCanvas({
     
     setElements(prev => [...prev, newElement])
     setSelectedElement(newElement.id)
+    recordAction(createCreateAction(newElement))
   }
 
   const fitToScreen = () => {
@@ -745,6 +966,7 @@ export function CreationCanvas({
                         }
                         setElements(prev => [...prev, newElement])
                         setSelectedElement(newElement.id)
+                        recordAction(createCreateAction(newElement))
                       }}
                     >
                       <img
@@ -922,6 +1144,28 @@ export function CreationCanvas({
               title="Add text"
             >
               <Type className="h-4 w-4" />
+            </Button>
+
+            <div className="border-l h-6 mx-2 hidden lg:block" />
+
+            {/* Undo/Redo */}
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleUndo}
+              disabled={!canUndo(actionHistory)}
+              title="Undo (Ctrl+Z)"
+            >
+              <Undo2 className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleRedo}
+              disabled={!canRedo(actionHistory)}
+              title="Redo (Ctrl+Y)"
+            >
+              <Redo2 className="h-4 w-4" />
             </Button>
             
             {!isMobile && (
@@ -1246,6 +1490,22 @@ export function CreationCanvas({
           </div>
         </div>
       </div>
+
+      {/* Floating Element Toolbar */}
+      {selectedElementData && canvasRef.current && !isMobile && (
+        <ElementToolbar
+          element={selectedElementData}
+          onRotate={() => rotateElement(selectedElementData.id)}
+          onCopy={() => copyElement(selectedElementData.id)}
+          onDelete={() => deleteElementWithHistory(selectedElementData.id)}
+          onLayerUp={() => moveElementLayer(selectedElementData.id, 'up')}
+          onLayerDown={() => moveElementLayer(selectedElementData.id, 'down')}
+          canvasRef={canvasRef}
+          zoom={zoom}
+          panOffset={panOffset}
+          canvasScale={canvasScale}
+        />
+      )}
 
       {/* Mobile Properties Persistent Bottom Panel */}
       {isMobile && (

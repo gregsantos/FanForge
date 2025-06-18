@@ -160,14 +160,15 @@ You will follow this exact sequence from the Implementation Plan:
 #### 5.2 Core Canvas Manipulation (Feature #9)
 
 - [x] Implement asset selection with visual feedback
-- [ ] Add multi-select capability
+- [x] Add enhanced element selection with floating toolbar (rotate, layer, copy, trash controls)
 - [x] Create move functionality with touch and drag support
 - [x] Build basic element manipulation (move, rotate, resize)
 - [x] Add touch-based movement for mobile devices
 - [x] Implement click-to-add functionality for mobile
 - [x] Create canvas zoom and pan controls
-- [ ] Add keyboard shortcuts for operations
-- [ ] Implement comprehensive undo/redo system
+- [x] Add keyboard shortcuts for operations (Delete, Ctrl+Z/Y, Ctrl+C/V, Arrow keys)
+- [x] Implement comprehensive undo/redo system with action history
+- [x] Add copy/paste functionality for element duplication
 - [x] Test all manipulation features thoroughly on mobile and desktop
 
 #### 5.3 Canvas State Management (Feature #10)
