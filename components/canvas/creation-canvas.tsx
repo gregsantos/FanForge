@@ -83,8 +83,6 @@ export function CreationCanvas({
   const [selectedElement, setSelectedElement] = useState<string | null>(null)
   const [zoom, setZoom] = useState(1)
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragPreview, setDragPreview] = useState<{ x: number; y: number; asset: Asset } | null>(null)
   const [isAutoSaving, setIsAutoSaving] = useState(false)
   const [isPanning, setIsPanning] = useState(false)
   const [panStart, setPanStart] = useState({ x: 0, y: 0 })
@@ -98,6 +96,7 @@ export function CreationCanvas({
   const [editingTextId, setEditingTextId] = useState<string | null>(null)
   const [editingText, setEditingText] = useState<string>('')
   const [hoveredElement, setHoveredElement] = useState<string | null>(null)
+  const [preventNextCanvasClick, setPreventNextCanvasClick] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [isTouchDevice, setIsTouchDevice] = useState(false)
   const [viewportWidth, setViewportWidth] = useState(800)
@@ -319,6 +318,9 @@ export function CreationCanvas({
           { width: element.width, height: element.height }
         ))
       }
+      // Prevent canvas click from deselecting after resize
+      setPreventNextCanvasClick(true)
+      setTimeout(() => setPreventNextCanvasClick(false), 50)
     }
     setIsResizing(null)
   }
@@ -405,6 +407,9 @@ export function CreationCanvas({
           element.rotation
         ))
       }
+      // Prevent canvas click from deselecting after rotation
+      setPreventNextCanvasClick(true)
+      setTimeout(() => setPreventNextCanvasClick(false), 50)
     }
     setIsRotating(null)
   }
@@ -603,7 +608,7 @@ export function CreationCanvas({
         // Check if we still have unsaved changes and enough time has passed since last autosave
         const now = new Date()
         const timeSinceLastAutoSave = lastAutoSaveTime ? now.getTime() - lastAutoSaveTime.getTime() : Infinity
-        const minTimeBetweenSaves = 30000 // Minimum 30 seconds between autosaves
+        const minTimeBetweenSaves = 10000 // Minimum 10 seconds between autosaves
         
         if (hasUnsavedChanges && timeSinceLastAutoSave >= minTimeBetweenSaves) {
           setIsAutoSaving(true)
@@ -658,59 +663,6 @@ export function CreationCanvas({
     }
   }, [])
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(false)
-    setDragPreview(null)
-    
-    const assetId = e.dataTransfer.getData("assetId")
-    const asset = assets.find(a => a.id === assetId)
-
-    if (asset && canvasRef.current) {
-      const rect = canvasRef.current.getBoundingClientRect()
-      const x = (e.clientX - rect.left - panOffset.x) / zoom
-      const y = (e.clientY - rect.top - panOffset.y) / zoom
-
-      // Calculate element size based on asset metadata if available
-      const aspectRatio = asset.metadata.width / asset.metadata.height
-      const defaultSize = 100
-      const width = defaultSize
-      const height = defaultSize / aspectRatio
-
-      const newElement: CanvasElement = {
-        id: generateId(),
-        type: 'asset',
-        assetId: asset.id,
-        x: Math.max(0, x - width / 2),
-        y: Math.max(0, y - height / 2),
-        width,
-        height,
-        rotation: 0,
-        zIndex: elements.length,
-      }
-
-      setElements(prev => [...prev, newElement])
-      setSelectedElement(newElement.id)
-      recordAction(createCreateAction(newElement))
-    }
-  }, [assets, elements.length, zoom, panOffset])
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    
-    if (canvasRef.current) {
-      const rect = canvasRef.current.getBoundingClientRect()
-      const x = e.clientX - rect.left
-      const y = e.clientY - rect.top
-      
-      const assetId = e.dataTransfer.getData("assetId")
-      const asset = assets.find(a => a.id === assetId)
-      
-      if (asset) {
-        setDragPreview({ x, y, asset })
-      }
-    }
-  }, [assets])
 
   const updateElement = debouncedUpdateElement
 
@@ -1051,23 +1003,17 @@ export function CreationCanvas({
 
       {/* Mobile Asset Panel - Top Collapsible */}
       {isMobile && (
-        <div className={`bg-card border-b transition-all duration-300 ${isAssetPanelOpen ? 'h-80' : 'h-12'} shrink-0 ${isDragging ? 'z-30' : 'z-10'}`}>
+        <div className={`bg-card border-b transition-all duration-300 ${isAssetPanelOpen ? 'h-80' : 'h-12'} shrink-0 z-10`}>
           <div className="flex items-center justify-between px-4 h-12 border-b">
             <div className="flex items-center gap-2">
               <Palette className="h-4 w-4" />
               <span className="font-medium">Assets</span>
               <Badge variant="outline" className="text-xs">{filteredAssets.length}</Badge>
-              {isDragging && (
-                <Badge variant="secondary" className="text-xs animate-pulse">
-                  Drag to canvas below
-                </Badge>
-              )}
             </div>
             <Button 
               variant="ghost" 
               size="sm"
               onClick={() => setIsAssetPanelOpen(!isAssetPanelOpen)}
-              disabled={isDragging} // Prevent closing while dragging
             >
               {isAssetPanelOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </Button>
@@ -1095,20 +1041,9 @@ export function CreationCanvas({
                   {(filteredAssets.length > 20 ? visibleAssets : filteredAssets).map((asset, index) => (
                     <div
                       key={asset.id}
-                      draggable={!isMobile} // Disable drag on mobile
-                      onDragStart={e => {
-                        if (isMobile) return // No drag on mobile
-                        e.dataTransfer.setData("assetId", asset.id)
-                        setIsDragging(true)
-                      }}
-                      onDragEnd={() => {
-                        if (isMobile) return
-                        setIsDragging(false)
-                        setDragPreview(null)
-                      }}
                       className="asset-palette-item group relative aspect-square border border-border rounded cursor-pointer transition-all hover:border-primary active:scale-95"
                       onClick={(e) => {
-                        // On mobile and desktop: click to add asset to center of canvas
+                        // Click to add asset to center of canvas
                         setIsAssetPanelOpen(false)
                         const canvasWidth = isMobile ? Math.min(800, viewportWidth - 8) : 800
                         const canvasHeight = isMobile ? canvasWidth * 0.75 : 600
@@ -1199,16 +1134,26 @@ export function CreationCanvas({
             {(filteredAssets.length > 20 ? visibleAssets : filteredAssets).map((asset, index) => (
               <div
                 key={asset.id}
-                draggable
-                onDragStart={e => {
-                  e.dataTransfer.setData("assetId", asset.id)
-                  setIsDragging(true)
+                className="asset-palette-item group relative aspect-square overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                onClick={() => {
+                  // Add asset to center of canvas
+                  const canvasWidth = 800
+                  const canvasHeight = 600
+                  const newElement: CanvasElement = {
+                    id: generateId(),
+                    type: 'asset',
+                    assetId: asset.id,
+                    x: (canvasWidth - 100) / 2, // Center horizontally
+                    y: (canvasHeight - 100) / 2, // Center vertically  
+                    width: 100,
+                    height: 100,
+                    rotation: 0,
+                    zIndex: elements.length,
+                  }
+                  setElements(prev => [...prev, newElement])
+                  setSelectedElement(newElement.id)
+                  recordAction(createCreateAction(newElement))
                 }}
-                onDragEnd={() => {
-                  setIsDragging(false)
-                  setDragPreview(null)
-                }}
-                className="asset-palette-item group relative aspect-square overflow-hidden"
               >
                 <img
                   src={asset.thumbnailUrl || asset.url}
@@ -1229,6 +1174,7 @@ export function CreationCanvas({
                     <Badge variant="secondary" className="mt-1 text-xs">
                       {asset.category}
                     </Badge>
+                    <p className="text-xs mt-1 opacity-75">Click to add</p>
                   </div>
                 </div>
               </div>
@@ -1373,11 +1319,15 @@ export function CreationCanvas({
                 onClick={saveToLocalStorage}
                 disabled={isAutoSaving}
                 className="hidden lg:flex"
-                title={`Manual save${lastSaveTime ? ` (last: ${lastSaveTime.toLocaleTimeString()})` : ''}. Auto-saves every 10s after changes, minimum 30s apart.`}
+                title={`Manual save${lastSaveTime ? ` (last: ${lastSaveTime.toLocaleTimeString()})` : ''}. Auto-saves every 10s after changes, minimum 10s apart.`}
               >
                 <Save className={`h-4 w-4 mr-1 ${isAutoSaving ? 'animate-spin' : ''}`} />
                 <span className="hidden xl:inline">{isAutoSaving ? 'Saving...' : 'Save'}</span>
-                {hasUnsavedChanges && <div className="w-2 h-2 bg-orange-500 rounded-full ml-1" />}
+                {hasUnsavedChanges ? (
+                  <div className="w-2 h-2 bg-orange-500 rounded-full ml-1" />
+                ) : elements.length > 0 && lastSaveTime && (
+                  <div className="w-2 h-2 bg-green-500 rounded-full ml-1" />
+                )}
               </Button>
             )}
             
@@ -1396,11 +1346,7 @@ export function CreationCanvas({
           >
             <div
               ref={canvasRef}
-              className={`relative bg-white border-2 border-dashed rounded-lg transition-colors ${
-                isDragging && isMobile 
-                  ? 'border-primary bg-primary/5 border-4' 
-                  : 'border-muted-foreground/25'
-              }`}
+              className="relative bg-white border-2 border-dashed border-muted-foreground/25 rounded-lg"
               style={(() => {
                 if (isMobile) {
                   // Use full available width minus minimal padding for mobile
@@ -1446,9 +1392,11 @@ export function CreationCanvas({
                   }
                 }
               })()}
-              onDrop={handleDrop}
-              onDragOver={handleDragOver}
-              onClick={() => setSelectedElement(null)}
+              onClick={() => {
+                if (!preventNextCanvasClick) {
+                  setSelectedElement(null)
+                }
+              }}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
@@ -1459,10 +1407,7 @@ export function CreationCanvas({
                   <Palette className="mx-auto h-8 w-8 sm:h-12 sm:w-12 mb-2 sm:mb-4" />
                   <h3 className="font-medium mb-1 sm:mb-2 text-sm sm:text-base">Start Creating</h3>
                   <p className="text-xs sm:text-sm">
-                    {isMobile 
-                      ? 'Tap assets above to add them to your canvas' 
-                      : 'Drag assets from the palette to begin'
-                    }
+                    Click assets from the palette to add them to your canvas
                   </p>
                   {!isMobile && (
                     <p className="text-xs mt-2 opacity-70">Ctrl+Scroll to zoom • Middle-click to pan</p>
@@ -1471,25 +1416,6 @@ export function CreationCanvas({
               </div>
             )}
             
-            {/* Drag Preview */}
-            {dragPreview && isDragging && (
-              <div
-                className="absolute pointer-events-none border-2 border-primary bg-primary/20 rounded opacity-60"
-                style={{
-                  left: dragPreview.x - 50,
-                  top: dragPreview.y - 50,
-                  width: 100,
-                  height: 100,
-                  zIndex: 9999
-                }}
-              >
-                <img
-                  src={dragPreview.asset.url}
-                  alt={dragPreview.asset.filename}
-                  className="w-full h-full object-cover rounded"
-                />
-              </div>
-            )}
             
             {elements.map(element => {
               if (element.type === 'asset') {
