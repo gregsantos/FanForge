@@ -127,6 +127,7 @@ function CreatePageContent() {
     <div className='flex h-screen bg-background'>
       <CreationCanvas
         assets={assets}
+        campaignId={campaignId || 'mock'}
         campaignTitle={campaign?.title || 'Loading...'}
         onSave={handleSave}
         onAutoSave={handleAutoSave}

@@ -53,7 +53,22 @@ export const campaignSchema = z.object({
 })
 
 export const submissionSchema = z.object({
-  title: z.string().min(3, "Title must be at least 3 characters"),
-  description: z.string().min(10, "Description must be at least 10 characters"),
+  title: z.string()
+    .min(3, "Title must be at least 3 characters")
+    .max(100, "Title must not exceed 100 characters"),
+  description: z.string()
+    .min(10, "Description must be at least 10 characters")
+    .max(1000, "Description must not exceed 1000 characters"),
+  tags: z.array(z.string().min(1).max(20)).max(10, "Maximum 10 tags allowed").default([]),
+  campaignId: z.string().min(1, "Campaign ID is required"),
+  artworkUrl: z.string().url("Invalid artwork URL").optional(),
+  canvasData: z.object({
+    elements: z.array(z.any()),
+    canvasSize: z.object({
+      width: z.number(),
+      height: z.number(),
+    }),
+    version: z.string(),
+  }).optional(),
   notes: z.string().optional(),
 })

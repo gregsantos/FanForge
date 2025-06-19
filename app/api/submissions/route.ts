@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { mockSubmissions } from "@/lib/mock-data"
+import { submissionSchema } from "@/lib/validations"
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -55,46 +56,81 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
-    // Validate required fields
-    const { campaign_id, title, description } = body
+    // Transform camelCase to snake_case for legacy compatibility
+    const submissionData = {
+      title: body.title,
+      description: body.description,
+      tags: body.tags || [],
+      campaignId: body.campaign_id || body.campaignId,
+      artworkUrl: body.artwork_url || body.artworkUrl,
+      canvasData: body.canvas_data || body.canvasData,
+      notes: body.notes,
+    }
+
+    // Validate with Zod schema
+    const validationResult = submissionSchema.safeParse(submissionData)
     
-    if (!campaign_id || !title || !description) {
+    if (!validationResult.success) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { 
+          error: "Validation failed",
+          details: validationResult.error.format()
+        },
         { status: 400 }
       )
     }
 
-    // Create new submission (mock)
+    const validatedData = validationResult.data
+
+    // Create new submission (mock implementation)
     const newSubmission = {
       id: `submission-${Date.now()}`,
-      campaign_id,
-      creator_id: "mock-creator-id",
-      title,
-      description,
-      artwork_url: "https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=400&h=300&fit=crop",
+      title: validatedData.title,
+      description: validatedData.description,
+      artworkUrl: validatedData.artworkUrl || "https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=400&h=300&fit=crop",
+      thumbnailUrl: validatedData.artworkUrl, // Use same URL for now
+      canvasData: validatedData.canvasData,
+      tags: validatedData.tags,
+      campaignId: validatedData.campaignId,
+      creatorId: "mock-creator-id", // In real app, get from auth
       status: "pending" as const,
-      created_at: new Date(),
-      updated_at: new Date(),
+      reviewedBy: undefined,
+      reviewedAt: undefined,
+      feedback: undefined,
+      rating: undefined,
+      isPublic: false,
+      viewCount: 0,
+      likeCount: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     }
+
+    // In a real application, save to database here
+    console.log('Creating submission:', newSubmission)
 
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 500))
 
     return NextResponse.json({
+      success: true,
       submission: {
         id: newSubmission.id,
-        campaign_id: newSubmission.campaign_id,
+        campaign_id: newSubmission.campaignId,
         title: newSubmission.title,
         status: newSubmission.status,
-        created_at: newSubmission.created_at,
-      }
+        created_at: newSubmission.createdAt,
+      },
+      message: "Submission created successfully"
     }, { status: 201 })
 
   } catch (error) {
+    console.error('Submission creation error:', error)
     return NextResponse.json(
-      { error: "Invalid request data" },
-      { status: 400 }
+      { 
+        error: "Failed to create submission",
+        message: error instanceof Error ? error.message : "Unknown error"
+      },
+      { status: 500 }
     )
   }
 }
