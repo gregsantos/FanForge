@@ -20,7 +20,6 @@ export function Navigation() {
   const creatorLinks = useMemo(() => [
     { href: "/discover", label: "Discover", icon: Search },
     { href: "/create", label: "Create", icon: Palette },
-    { href: "/submissions", label: "Submissions", icon: Eye },
     { href: "/portfolio", label: "My Work", icon: FileText },
     { href: "/profile", label: "Profile", icon: UserIcon },
   ], [])
