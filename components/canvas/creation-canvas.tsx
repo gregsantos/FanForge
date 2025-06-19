@@ -45,6 +45,7 @@ import { ProjectManager } from "./project-manager"
 import { ElementToolbar } from "./element-toolbar"
 import { HoverBoundingBox } from "./hover-bounding-box"
 import { EnhancedSelectionBox } from "./enhanced-selection-box"
+import { SubmissionModal } from "../submissions/submission-modal"
 import { 
   CanvasProject, 
   saveProject, 
@@ -79,6 +80,7 @@ import {
 
 interface CreationCanvasProps {
   assets: Asset[]
+  campaignId: string
   campaignTitle: string
   onSave: (elements: CanvasElement[]) => void
   isLoading?: boolean
@@ -87,6 +89,7 @@ interface CreationCanvasProps {
 
 export function CreationCanvas({ 
   assets, 
+  campaignId,
   campaignTitle, 
   onSave, 
   isLoading = false,
@@ -129,6 +132,9 @@ export function CreationCanvas({
   // Action history state
   const [actionHistory, setActionHistory] = useState<ActionHistory>(() => createActionHistory())
   const [clipboard, setClipboard] = useState<CanvasElement | null>(null)
+  
+  // Submission state
+  const [isSubmissionModalOpen, setIsSubmissionModalOpen] = useState(false)
   
   const canvasRef = useRef<HTMLDivElement>(null)
   const canvasContainerRef = useRef<HTMLDivElement>(null)
@@ -951,7 +957,11 @@ export function CreationCanvas({
   }, [selectedElement, editingTextId, elements, clipboard, handleUndo, handleRedo, deleteElementWithHistory, copyElement, recordAction])
 
   const handleSave = () => {
-    onSave(elements)
+    if (elements.length === 0) {
+      alert('Nothing to submit. Add some elements to your canvas first.')
+      return
+    }
+    setIsSubmissionModalOpen(true)
   }
 
   const resetCanvas = () => {
@@ -2192,6 +2202,20 @@ export function CreationCanvas({
         onOpenChange={setIsProjectManagerOpen}
         onLoadProject={handleLoadProject}
         currentProjectId={currentProjectId || undefined}
+      />
+
+      {/* Submission Modal */}
+      <SubmissionModal
+        isOpen={isSubmissionModalOpen}
+        onClose={() => setIsSubmissionModalOpen(false)}
+        campaignId={campaignId}
+        campaignTitle={campaignTitle}
+        canvasElements={elements}
+        assets={assets}
+        onSubmissionSuccess={(submissionId) => {
+          console.log('Submission successful:', submissionId)
+          onSave(elements) // Call the original onSave callback
+        }}
       />
     </div>
   )
