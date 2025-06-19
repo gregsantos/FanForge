@@ -7,6 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { generateId } from "@/lib/utils"
 import { 
   Save, 
@@ -46,6 +52,13 @@ import {
   checkForConflicts,
   hasStorageSpace 
 } from "@/lib/canvas-storage"
+import {
+  exportCanvas,
+  downloadBlob,
+  generateExportFilename,
+  ExportOptions,
+  ExportProgress
+} from "@/lib/canvas-export"
 import {
   ActionHistory,
   createActionHistory,
@@ -97,6 +110,8 @@ export function CreationCanvas({
   const [editingText, setEditingText] = useState<string>('')
   const [hoveredElement, setHoveredElement] = useState<string | null>(null)
   const [preventNextCanvasClick, setPreventNextCanvasClick] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const [exportProgress, setExportProgress] = useState<ExportProgress | null>(null)
   const [isMobile, setIsMobile] = useState(false)
   const [isTouchDevice, setIsTouchDevice] = useState(false)
   const [viewportWidth, setViewportWidth] = useState(800)
@@ -946,6 +961,44 @@ export function CreationCanvas({
     setZoom(1)
   }
 
+  // Export functionality
+  const handleExport = async (format: 'png' | 'jpeg' = 'png', scale: number = 2) => {
+    if (elements.length === 0) {
+      alert('Nothing to export. Add some elements to your canvas first.')
+      return
+    }
+
+    setIsExporting(true)
+    setExportProgress(null)
+
+    try {
+      const options: ExportOptions = {
+        format,
+        quality: 0.9,
+        scale, // Export at 2x resolution for better quality
+        backgroundColor: format === 'jpeg' ? '#ffffff' : 'transparent'
+      }
+
+      const blob = await exportCanvas(
+        elements,
+        assets,
+        { width: 800, height: 600 }, // Canvas size
+        options,
+        (progress) => setExportProgress(progress)
+      )
+
+      const filename = generateExportFilename(projectTitle || campaignTitle, format)
+      downloadBlob(blob, filename)
+
+    } catch (error) {
+      console.error('Export failed:', error)
+      alert(`Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsExporting(false)
+      setExportProgress(null)
+    }
+  }
+
   const addTextElement = () => {
     const canvasWidth = isMobile ? Math.min(800, viewportWidth - 8) : 800
     const canvasHeight = isMobile ? canvasWidth * 0.75 : 600
@@ -1330,6 +1383,53 @@ export function CreationCanvas({
                 )}
               </Button>
             )}
+            
+            {/* Export dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  disabled={elements.length === 0 || isExporting}
+                  title={isExporting 
+                    ? exportProgress 
+                      ? `${exportProgress.message} (${exportProgress.progress}%)`
+                      : "Exporting..."
+                    : "Export canvas as image"
+                  }
+                >
+                  <Download className={`h-4 w-4 mr-1 ${isExporting ? 'animate-pulse' : ''}`} />
+                  <span className="hidden lg:inline">
+                    {isExporting 
+                      ? exportProgress 
+                        ? `${exportProgress.progress}%`
+                        : 'Exporting...'
+                      : 'Export'
+                    }
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem 
+                  onClick={() => handleExport('png')}
+                  disabled={isExporting}
+                  className="flex items-center gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Export as PNG (High Quality)
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => handleExport('jpeg')}
+                  disabled={isExporting}
+                  className="flex items-center gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Export as JPEG (Smaller Size)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            <div className="border-l h-6 mx-2" />
             
             <Button size="sm" onClick={handleSave} disabled={elements.length === 0}>
               <Download className="h-4 w-4 mr-1" />

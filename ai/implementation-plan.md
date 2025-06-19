@@ -164,7 +164,7 @@ You will follow this exact sequence from the Implementation Plan:
 - [x] Create move functionality with touch and drag support
 - [x] Build basic element manipulation (move, rotate, resize)
 - [x] Add touch-based movement for mobile devices
-- [x] Implement click-to-add functionality for mobile
+- [x] Replace drag-and-drop with click-to-add functionality for all devices
 - [x] Create canvas zoom and pan controls
 - [x] Add keyboard shortcuts for operations (Delete, Ctrl+Z/Y, Ctrl+C/V, Arrow keys)
 - [x] Implement comprehensive undo/redo system with action history
@@ -174,17 +174,17 @@ You will follow this exact sequence from the Implementation Plan:
 #### 5.3 Canvas State Management (Feature #10)
 
 - [x] Implement manual save functionality
-- [x] Add auto-save functionality with indicators
+- [x] Add auto-save functionality with optimized timing (10s intervals)
+- [x] Add visual save status indicators (green=saved, orange=unsaved)
 - [x] Create canvas state management with React hooks
 - [x] Build element state management and updates
 - [x] Implement basic canvas reset functionality
 - [x] Add element deletion and property management
 - [x] Create local storage backup system
 - [ ] Build project loading with state restoration
-- [ ] Implement canvas export to PNG/JPG
+- [x] Implement canvas export to PNG/JPG with progress indicators and high-quality rendering
 - [ ] Handle save conflicts between sessions
 - [ ] Generate project thumbnails
-- [ ] Add export progress indicators
 
 #### 5.4 Mobile Canvas UX Optimization (Feature #15a)
 
@@ -205,18 +205,18 @@ You will follow this exact sequence from the Implementation Plan:
 - [x] Add comprehensive text editing with font controls (size, color, bold, italic)
 - [x] Implement double-click inline text editing with auto-focus
 - [x] Add keyboard shortcuts for text editing (Escape, Ctrl+Enter)
-- [x] Create drag and drop positioning for all canvas elements
-- [x] Implement visual resize handles with corner controls
+- [x] Create enhanced selection system with hover states and professional controls
+- [x] Implement enhanced resize handles (corner + side handles for one-directional resizing)
+- [x] Add rotation handle with 360-degree drag rotation and snap-to-grid (shift key)
+- [x] Add position dropdown in toolbar with alignment options (left, center, right, top, middle, bottom)
+- [x] Maintain element selection after resize/rotate operations
 - [x] Add proper device detection (touch vs mouse input)
 - [x] Fix responsive drag/resize functionality for smaller screens
-- [x] Add visual feedback with appropriate cursors (grab, resize arrows)
+- [x] Add visual feedback with appropriate cursors and hover effects
 - [x] Implement event handling separation for drag, resize, and edit modes
 - [ ] Create basic image filters (brightness, contrast, etc.)
 - [ ] Build color adjustment tools
-- [ ] Enhance undo/redo with action history
-- [ ] Add copy/paste functionality
 - [ ] Implement element grouping/ungrouping
-- [ ] Create alignment tools
 - [ ] Add grid snap functionality
 - [ ] Implement layer locking
 
