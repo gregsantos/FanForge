@@ -124,9 +124,17 @@ export const authListeners = {
     const supabase = createClient()
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         if (session?.user) {
-          const user = await authClient.getCurrentUser()
+          // Transform session user to our AuthUser format
+          const user: AuthUser = {
+            id: session.user.id,
+            email: session.user.email!,
+            displayName: session.user.user_metadata?.display_name,
+            avatarUrl: session.user.user_metadata?.avatar_url,
+            role: session.user.user_metadata?.role,
+            emailVerified: session.user.email_confirmed_at !== null,
+          }
           callback(user)
         } else {
           callback(null)

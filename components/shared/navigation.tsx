@@ -14,7 +14,7 @@ import { useRouter } from "next/navigation"
 export function Navigation() {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const { user, signOut, loading } = useAuth()
+  const { user, signOut, loading, isClient } = useAuth()
   const router = useRouter()
 
   const creatorLinks = useMemo(() => [
@@ -127,7 +127,17 @@ export function Navigation() {
               <span className="text-xl font-bold text-primary">FanForge</span>
             </Link>
             
-            {user && links.length > 0 && (
+            {!isClient || loading ? (
+              <div className="hidden md:ml-10 md:flex md:space-x-8">
+                {/* Loading skeleton for navigation links */}
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="inline-flex items-center px-1 pt-1">
+                    <div className="h-4 w-4 bg-muted animate-pulse rounded mr-2" />
+                    <div className="h-4 w-16 bg-muted animate-pulse rounded" />
+                  </div>
+                ))}
+              </div>
+            ) : user && links.length > 0 && (
               <div className="hidden md:ml-10 md:flex md:space-x-8">
                 {links.map((link) => (
                   <Link
@@ -150,7 +160,7 @@ export function Navigation() {
 
           <div className="flex items-center space-x-4">
             <ThemeToggle />
-            {loading ? (
+            {!isClient || loading ? (
               <div className="hidden md:flex md:items-center">
                 <div className="h-8 w-8 animate-pulse rounded-full bg-muted"></div>
               </div>
@@ -199,7 +209,17 @@ export function Navigation() {
       {mobileMenuOpen && (
         <div className="md:hidden">
           <div className="space-y-1 px-2 pb-3 pt-2">
-            {user ? (
+            {!isClient || loading ? (
+              <div className="space-y-2">
+                {/* Loading skeleton for mobile menu */}
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="flex items-center rounded-md px-3 py-2">
+                    <div className="h-5 w-5 bg-muted animate-pulse rounded mr-3" />
+                    <div className="h-4 w-20 bg-muted animate-pulse rounded" />
+                  </div>
+                ))}
+              </div>
+            ) : user ? (
               <>
                 {links.map((link) => (
                   <Link

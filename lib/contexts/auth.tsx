@@ -7,6 +7,7 @@ import { authClient, authListeners, type AuthUser, type RegisterData, type Login
 interface AuthContextType {
   user: AuthUser | null
   loading: boolean
+  isClient: boolean
   signUp: (data: RegisterData) => Promise<void>
   signIn: (data: LoginData) => Promise<void>
   signOut: () => Promise<void>
@@ -31,28 +32,42 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isClient, setIsClient] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
-    // Get initial user
-    authClient.getCurrentUser()
-      .then((user) => {
-        setUser(user)
-        setLoading(false)
-      })
-      .catch((error) => {
-        console.error('Error getting initial user:', error)
-        setUser(null)
-        setLoading(false)
-      })
-
-    // Listen for auth state changes
+    // Mark that we're on the client side
+    setIsClient(true)
+    
+    // Set up auth state listener which will handle both initial session restoration
+    // and subsequent auth changes
     const unsubscribe = authListeners.onAuthStateChange((user) => {
       setUser(user)
       setLoading(false)
     })
 
-    return unsubscribe
+    // Fallback timeout to ensure loading state always resolves
+    // This handles edge cases where auth listener might not fire
+    const timeoutId = setTimeout(() => {
+      if (loading) {
+        console.warn('Auth state did not resolve within 3 seconds, falling back to getCurrentUser')
+        authClient.getCurrentUser()
+          .then((user) => {
+            setUser(user)
+            setLoading(false)
+          })
+          .catch((error) => {
+            console.error('Fallback getCurrentUser failed:', error)
+            setUser(null)
+            setLoading(false)
+          })
+      }
+    }, 3000)
+
+    return () => {
+      unsubscribe()
+      clearTimeout(timeoutId)
+    }
   }, [])
 
   const signUp = async (data: RegisterData) => {
@@ -115,6 +130,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const value: AuthContextType = {
     user,
     loading,
+    isClient,
     signUp,
     signIn,
     signOut,
