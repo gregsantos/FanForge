@@ -1,8 +1,15 @@
-'use client'
+"use client"
 
-import React, { createContext, useContext, useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { authClient, authListeners, type AuthUser, type RegisterData, type LoginData, type SignUpResult } from '@/lib/services/auth'
+import React, {createContext, useContext, useEffect, useState} from "react"
+import {useRouter} from "next/navigation"
+import {
+  authClient,
+  authListeners,
+  type AuthUser,
+  type RegisterData,
+  type LoginData,
+  type SignUpResult,
+} from "@/lib/services/auth"
 
 interface AuthContextType {
   user: AuthUser | null
@@ -21,7 +28,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function useAuth() {
   const context = useContext(AuthContext)
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider')
+    throw new Error("useAuth must be used within an AuthProvider")
   }
   return context
 }
@@ -30,7 +37,7 @@ interface AuthProviderProps {
   children: React.ReactNode
 }
 
-export function AuthProvider({ children }: AuthProviderProps) {
+export function AuthProvider({children}: AuthProviderProps) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [isClient, setIsClient] = useState(false)
@@ -39,10 +46,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     // Mark that we're on the client side
     setIsClient(true)
-    
+
     // Set up auth state listener which will handle both initial session restoration
     // and subsequent auth changes
-    const unsubscribe = authListeners.onAuthStateChange((user) => {
+    const unsubscribe = authListeners.onAuthStateChange(user => {
       setUser(user)
       setLoading(false)
     })
@@ -51,19 +58,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // This handles edge cases where auth listener might not fire
     const timeoutId = setTimeout(() => {
       if (loading) {
-        console.warn('Auth state did not resolve within 3 seconds, falling back to getCurrentUser')
-        authClient.getCurrentUser()
-          .then((user) => {
+        console.warn(
+          "Auth state did not resolve within 5 seconds, falling back to getCurrentUser"
+        )
+        console.log("Attempting manual user fetch due to timeout")
+        authClient
+          .getCurrentUser()
+          .then(user => {
+            console.log("Manual fetch result:", user ? "User found" : "No user")
             setUser(user)
             setLoading(false)
           })
-          .catch((error) => {
-            console.error('Fallback getCurrentUser failed:', error)
+          .catch(error => {
+            console.error("Fallback getCurrentUser failed:", error)
             setUser(null)
             setLoading(false)
           })
       }
-    }, 3000)
+    }, 5000)
 
     return () => {
       unsubscribe()
@@ -75,7 +87,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setLoading(true)
     try {
       const result = await authClient.signUp(data)
-      
+
       // If email confirmation is not needed, user will be set via auth state change listener
       // If confirmation is needed, we don't set loading to false here so the register page can handle it
       if (!result.needsEmailConfirmation) {
@@ -84,7 +96,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Don't change loading state - let the register page handle this
         setLoading(false)
       }
-      
+
       return result
     } catch (error) {
       setLoading(false)
@@ -118,7 +130,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setUser(null)
       setLoading(false)
       // Redirect to home page after successful logout
-      router.push('/')
+      router.push("/")
     } catch (error) {
       setLoading(false)
       throw error
@@ -126,8 +138,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }
 
   const updateProfile = async (data: Partial<AuthUser>) => {
-    if (!user) throw new Error('No user logged in')
-    
+    if (!user) throw new Error("No user logged in")
+
     try {
       await authClient.updateProfile(data)
       // Refresh user data
@@ -158,9 +170,5 @@ export function AuthProvider({ children }: AuthProviderProps) {
     resendConfirmation,
   }
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  )
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

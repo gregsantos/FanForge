@@ -1,5 +1,5 @@
-import { createClient } from '@/utils/supabase/client'
-import type { User } from '@/types'
+import {createClient} from "@/utils/supabase/client"
+import type {User} from "@/types"
 
 export interface AuthUser {
   id: string
@@ -14,7 +14,7 @@ export interface RegisterData {
   email: string
   password: string
   displayName: string
-  role: 'creator' | 'brand_admin'
+  role: "creator" | "brand_admin"
 }
 
 export interface SignUpResult {
@@ -33,8 +33,8 @@ export interface LoginData {
 export const authClient = {
   async signUp(data: RegisterData): Promise<SignUpResult> {
     const supabase = createClient()
-    
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+
+    const {data: authData, error: authError} = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
       options: {
@@ -42,30 +42,32 @@ export const authClient = {
           display_name: data.displayName,
           role: data.role,
         },
-        emailRedirectTo: `${window.location.origin}/confirm`
-      }
+        emailRedirectTo: `${window.location.origin}/confirm`,
+      },
     })
 
     if (authError) throw authError
 
     // Check if user is immediately logged in or needs email confirmation
-    const needsEmailConfirmation = Boolean(!authData.session && authData.user && !authData.user.email_confirmed_at)
+    const needsEmailConfirmation = Boolean(
+      !authData.session && authData.user && !authData.user.email_confirmed_at
+    )
 
     return {
       success: true,
       needsEmailConfirmation: needsEmailConfirmation,
       email: data.email,
-      message: needsEmailConfirmation 
-        ? 'Please check your email to confirm your account'
-        : 'Account created successfully'
+      message: needsEmailConfirmation
+        ? "Please check your email to confirm your account"
+        : "Account created successfully",
     }
   },
 
   async resendConfirmation(email: string): Promise<void> {
     const supabase = createClient()
-    
-    const { error } = await supabase.auth.resend({
-      type: 'signup',
+
+    const {error} = await supabase.auth.resend({
+      type: "signup",
       email: email,
     })
 
@@ -74,8 +76,8 @@ export const authClient = {
 
   async signIn(data: LoginData) {
     const supabase = createClient()
-    
-    const { data: authData, error } = await supabase.auth.signInWithPassword({
+
+    const {data: authData, error} = await supabase.auth.signInWithPassword({
       email: data.email,
       password: data.password,
     })
@@ -86,46 +88,66 @@ export const authClient = {
 
   async signOut() {
     const supabase = createClient()
-    const { error } = await supabase.auth.signOut()
+    const {error} = await supabase.auth.signOut()
     if (error) throw error
   },
 
   async getCurrentUser(): Promise<AuthUser | null> {
     const supabase = createClient()
-    
-    const { data: { user }, error } = await supabase.auth.getUser()
-    if (error || !user) return null
 
-    // Return basic user info from Supabase
-    // Extended profile data should be fetched via API routes
-    return {
-      id: user.id,
-      email: user.email!,
-      displayName: user.user_metadata?.display_name,
-      avatarUrl: user.user_metadata?.avatar_url,
-      role: user.user_metadata?.role,
-      emailVerified: user.email_confirmed_at !== null,
+    try {
+      const {
+        data: {user},
+        error,
+      } = await supabase.auth.getUser()
+      if (error) {
+        if (error.code === "refresh_token_not_found") {
+          console.error("Refresh token not found, clearing session")
+          await supabase.auth.signOut()
+          return null
+        }
+        throw error
+      }
+      if (!user) return null
+
+      // Return basic user info from Supabase
+      // Extended profile data should be fetched via API routes
+      return {
+        id: user.id,
+        email: user.email!,
+        displayName: user.user_metadata?.display_name,
+        avatarUrl: user.user_metadata?.avatar_url,
+        role: user.user_metadata?.role,
+        emailVerified: user.email_confirmed_at !== null,
+      }
+    } catch (error) {
+      console.error("Error fetching current user:", error)
+      return null
     }
   },
 
-  async updateProfile(updates: Partial<Pick<User, 'displayName' | 'avatarUrl' | 'bio' | 'socialLinks'>>) {
+  async updateProfile(
+    updates: Partial<
+      Pick<User, "displayName" | "avatarUrl" | "bio" | "socialLinks">
+    >
+  ) {
     // Profile updates should be handled via API routes
     // that run on the server-side
-    const response = await fetch('/api/auth/profile', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+    const response = await fetch("/api/auth/profile", {
+      method: "PATCH",
+      headers: {"Content-Type": "application/json"},
       body: JSON.stringify(updates),
     })
 
     if (!response.ok) {
-      throw new Error('Failed to update profile')
+      throw new Error("Failed to update profile")
     }
   },
 
   async resetPassword(email: string) {
     const supabase = createClient()
-    
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+
+    const {error} = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth/reset-password`,
     })
 
@@ -134,40 +156,39 @@ export const authClient = {
 
   async updatePassword(newPassword: string) {
     const supabase = createClient()
-    
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword
+
+    const {error} = await supabase.auth.updateUser({
+      password: newPassword,
     })
 
     if (error) throw error
-  }
+  },
 }
-
 
 // Auth state change listeners for client-side
 export const authListeners = {
   onAuthStateChange(callback: (user: AuthUser | null) => void) {
     const supabase = createClient()
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session?.user) {
-          // Transform session user to our AuthUser format
-          const user: AuthUser = {
-            id: session.user.id,
-            email: session.user.email!,
-            displayName: session.user.user_metadata?.display_name,
-            avatarUrl: session.user.user_metadata?.avatar_url,
-            role: session.user.user_metadata?.role,
-            emailVerified: session.user.email_confirmed_at !== null,
-          }
-          callback(user)
-        } else {
-          callback(null)
+
+    const {
+      data: {subscription},
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        // Transform session user to our AuthUser format
+        const user: AuthUser = {
+          id: session.user.id,
+          email: session.user.email!,
+          displayName: session.user.user_metadata?.display_name,
+          avatarUrl: session.user.user_metadata?.avatar_url,
+          role: session.user.user_metadata?.role,
+          emailVerified: session.user.email_confirmed_at !== null,
         }
+        callback(user)
+      } else {
+        callback(null)
       }
-    )
+    })
 
     return () => subscription.unsubscribe()
-  }
+  },
 }
