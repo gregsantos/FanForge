@@ -2,17 +2,18 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { authClient, authListeners, type AuthUser, type RegisterData, type LoginData } from '@/lib/services/auth'
+import { authClient, authListeners, type AuthUser, type RegisterData, type LoginData, type SignUpResult } from '@/lib/services/auth'
 
 interface AuthContextType {
   user: AuthUser | null
   loading: boolean
   isClient: boolean
-  signUp: (data: RegisterData) => Promise<void>
+  signUp: (data: RegisterData) => Promise<SignUpResult>
   signIn: (data: LoginData) => Promise<void>
   signOut: () => Promise<void>
   updateProfile: (data: Partial<AuthUser>) => Promise<void>
   resetPassword: (email: string) => Promise<void>
+  resendConfirmation: (email: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -70,13 +71,31 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, [])
 
-  const signUp = async (data: RegisterData) => {
+  const signUp = async (data: RegisterData): Promise<SignUpResult> => {
     setLoading(true)
     try {
-      await authClient.signUp(data)
-      // User will be set via the auth state change listener
+      const result = await authClient.signUp(data)
+      
+      // If email confirmation is not needed, user will be set via auth state change listener
+      // If confirmation is needed, we don't set loading to false here so the register page can handle it
+      if (!result.needsEmailConfirmation) {
+        // User will be set via the auth state change listener
+      } else {
+        // Don't change loading state - let the register page handle this
+        setLoading(false)
+      }
+      
+      return result
     } catch (error) {
       setLoading(false)
+      throw error
+    }
+  }
+
+  const resendConfirmation = async (email: string) => {
+    try {
+      await authClient.resendConfirmation(email)
+    } catch (error) {
       throw error
     }
   }
@@ -136,6 +155,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     signOut,
     updateProfile,
     resetPassword,
+    resendConfirmation,
   }
 
   return (

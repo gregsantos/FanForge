@@ -35,7 +35,7 @@ export async function middleware(request: NextRequest) {
 
   // Define protected routes
   const protectedRoutes = ['/dashboard', '/campaigns', '/submissions', '/create', '/portfolio', '/discover', '/assets', '/ip-kits', '/my-submissions']
-  const authRoutes = ['/login', '/register']
+  const authRoutes = ['/login', '/register', '/confirm']
   const brandOnlyRoutes = ['/dashboard', '/campaigns', '/assets', '/ip-kits', '/submissions']
   const creatorOnlyRoutes = ['/create', '/my-submissions', '/portfolio']
   
@@ -80,7 +80,8 @@ export async function middleware(request: NextRequest) {
   }
 
   // Redirect authenticated users from auth routes to appropriate page
-  if (isAuthRoute && user) {
+  // Exception: don't redirect from /confirm as users need to complete email confirmation
+  if (isAuthRoute && user && !request.nextUrl.pathname.startsWith('/confirm')) {
     const redirectUrl = request.nextUrl.clone()
     
     // Get user role from metadata

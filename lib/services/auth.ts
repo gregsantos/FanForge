@@ -17,6 +17,13 @@ export interface RegisterData {
   role: 'creator' | 'brand_admin'
 }
 
+export interface SignUpResult {
+  success: boolean
+  needsEmailConfirmation: boolean
+  email: string
+  message: string
+}
+
 export interface LoginData {
   email: string
   password: string
@@ -24,7 +31,7 @@ export interface LoginData {
 
 // Client-side auth functions
 export const authClient = {
-  async signUp(data: RegisterData) {
+  async signUp(data: RegisterData): Promise<SignUpResult> {
     const supabase = createClient()
     
     const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -34,16 +41,35 @@ export const authClient = {
         data: {
           display_name: data.displayName,
           role: data.role,
-        }
+        },
+        emailRedirectTo: `${window.location.origin}/confirm`
       }
     })
 
     if (authError) throw authError
 
-    // User profile creation will be handled by the API route
-    // which runs on the server-side
+    // Check if user is immediately logged in or needs email confirmation
+    const needsEmailConfirmation = Boolean(!authData.session && authData.user && !authData.user.email_confirmed_at)
 
-    return authData
+    return {
+      success: true,
+      needsEmailConfirmation: needsEmailConfirmation,
+      email: data.email,
+      message: needsEmailConfirmation 
+        ? 'Please check your email to confirm your account'
+        : 'Account created successfully'
+    }
+  },
+
+  async resendConfirmation(email: string): Promise<void> {
+    const supabase = createClient()
+    
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email,
+    })
+
+    if (error) throw error
   },
 
   async signIn(data: LoginData) {
