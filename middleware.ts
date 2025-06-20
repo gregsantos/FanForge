@@ -34,13 +34,21 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   // Define protected routes
-  const protectedRoutes = ['/dashboard', '/campaigns', '/submissions', '/create', '/portfolio', '/discover']
+  const protectedRoutes = ['/dashboard', '/campaigns', '/submissions', '/create', '/portfolio', '/discover', '/assets', '/ip-kits', '/my-submissions']
   const authRoutes = ['/login', '/register']
+  const brandOnlyRoutes = ['/dashboard', '/campaigns', '/assets', '/ip-kits', '/submissions']
+  const creatorOnlyRoutes = ['/create', '/my-submissions', '/portfolio']
   
   const isProtectedRoute = protectedRoutes.some(route => 
     request.nextUrl.pathname.startsWith(route)
   )
   const isAuthRoute = authRoutes.some(route => 
+    request.nextUrl.pathname.startsWith(route)
+  )
+  const isBrandOnlyRoute = brandOnlyRoutes.some(route =>
+    request.nextUrl.pathname.startsWith(route)
+  )
+  const isCreatorOnlyRoute = creatorOnlyRoutes.some(route =>
     request.nextUrl.pathname.startsWith(route)
   )
 
@@ -52,11 +60,42 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
 
-  // Redirect authenticated users from auth routes to appropriate dashboard
+  // Role-based access control
+  if (user && isProtectedRoute) {
+    const userRole = user.user_metadata?.role
+    
+    // Prevent creators from accessing brand-only routes
+    if (userRole === 'creator' && isBrandOnlyRoute) {
+      const redirectUrl = request.nextUrl.clone()
+      redirectUrl.pathname = '/discover'
+      return NextResponse.redirect(redirectUrl)
+    }
+    
+    // Prevent brand admins from accessing creator-only routes (optional)
+    if (userRole === 'brand_admin' && isCreatorOnlyRoute) {
+      const redirectUrl = request.nextUrl.clone()
+      redirectUrl.pathname = '/dashboard'
+      return NextResponse.redirect(redirectUrl)
+    }
+  }
+
+  // Redirect authenticated users from auth routes to appropriate page
   if (isAuthRoute && user) {
     const redirectUrl = request.nextUrl.clone()
-    // Default to dashboard, but we could check user role here if needed
-    redirectUrl.pathname = '/dashboard'
+    
+    // Get user role from metadata
+    const userRole = user.user_metadata?.role
+    
+    // Redirect based on role: creators to discover, brand admins to dashboard
+    if (userRole === 'creator') {
+      redirectUrl.pathname = '/discover'
+    } else if (userRole === 'brand_admin') {
+      redirectUrl.pathname = '/dashboard'
+    } else {
+      // Default fallback to discover for unknown roles
+      redirectUrl.pathname = '/discover'
+    }
+    
     return NextResponse.redirect(redirectUrl)
   }
 

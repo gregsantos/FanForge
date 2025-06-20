@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useRouter } from "next/navigation"
@@ -18,7 +18,7 @@ type RegisterForm = z.infer<typeof registerSchema>
 
 export default function RegisterPage() {
   const [error, setError] = useState<string>("")
-  const { signUp, loading } = useAuth()
+  const { signUp, loading, user } = useAuth()
   const router = useRouter()
 
   const {
@@ -32,6 +32,14 @@ export default function RegisterPage() {
 
   const selectedRole = watch("role")
 
+  // Redirect user based on role after successful registration
+  useEffect(() => {
+    if (user && !loading) {
+      const redirectPath = user.role === "creator" ? "/discover" : "/dashboard"
+      router.push(redirectPath)
+    }
+  }, [user, loading, router])
+
   const onSubmit = async (data: RegisterForm) => {
     try {
       setError("")
@@ -41,8 +49,7 @@ export default function RegisterPage() {
         displayName: data.name,
         role: data.role,
       })
-      // Redirect will be handled by the auth context/middleware
-      router.push("/dashboard")
+      // Redirect will be handled by the useEffect when user state updates
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred during registration")
     }

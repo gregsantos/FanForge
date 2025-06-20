@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { UserDropdown } from "@/components/shared/user-dropdown"
 import { useAuth } from "@/lib/contexts/auth"
-import { Menu, X, Palette, Search, User as UserIcon, BarChart3, FileText, Eye, Image, Package } from "lucide-react"
+import { Menu, X, Palette, Search, User as UserIcon, BarChart3, FileText, Eye, Image, Package, User, LogOut } from "lucide-react"
 import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 
@@ -20,9 +20,8 @@ export function Navigation() {
   const creatorLinks = useMemo(() => [
     { href: "/discover", label: "Discover", icon: Search },
     { href: "/create", label: "Create", icon: Palette },
-    { href: "/my-submissions", label: "Submissions", icon: Eye },
-    { href: "/portfolio", label: "My Work", icon: FileText },
-    { href: "/profile", label: "Profile", icon: UserIcon },
+    { href: "/my-submissions", label: "My Submissions", icon: Eye },
+    { href: "/portfolio", label: "Portfolio", icon: FileText },
   ], [])
 
   const brandLinks = useMemo(() => [
@@ -30,10 +29,22 @@ export function Navigation() {
     { href: "/ip-kits", label: "IP Kits", icon: Package },
     { href: "/campaigns", label: "Campaigns", icon: FileText },
     { href: "/assets", label: "Assets", icon: Image },
-    { href: "/submissions", label: "Reviews", icon: Eye },
+    { href: "/submissions", label: "Submissions", icon: Eye },
   ], [])
 
-  const links = user?.role === "creator" ? creatorLinks : brandLinks
+  // Determine navigation links based on user role
+  const links = useMemo(() => {
+    if (!user) return []
+    
+    if (user.role === "creator") {
+      return creatorLinks
+    } else if (user.role === "brand_admin") {
+      return brandLinks
+    } else {
+      // Fallback for undefined or unknown roles - default to creator links
+      return creatorLinks
+    }
+  }, [user, creatorLinks, brandLinks])
 
   const handleSignOut = async () => {
     try {
@@ -51,39 +62,42 @@ export function Navigation() {
       if (!event.altKey || !user) return
 
       const key = event.key.toLowerCase()
-      const links = user.role === "creator" ? creatorLinks : brandLinks
+      const isCreator = user.role === "creator"
+      const isBrandAdmin = user.role === "brand_admin"
 
       switch (key) {
         case 'd':
           event.preventDefault()
-          router.push(user.role === "creator" ? "/discover" : "/dashboard")
+          router.push(isCreator ? "/discover" : "/dashboard")
           break
         case 'c':
           event.preventDefault()
-          router.push(user.role === "creator" ? "/create" : "/campaigns")
+          router.push(isCreator ? "/create" : "/campaigns")
           break
         case 'i':
           event.preventDefault()
-          if (user.role === "brand_admin") {
+          if (isBrandAdmin) {
             router.push("/ip-kits")
           }
           break
         case 'a':
           event.preventDefault()
-          if (user.role === "brand_admin") {
+          if (isBrandAdmin) {
             router.push("/assets")
           }
           break
         case 'p':
           event.preventDefault()
-          if (user.role === "creator") {
+          if (isCreator) {
             router.push("/portfolio")
           }
           break
         case 's':
           event.preventDefault()
-          if (user.role === "brand_admin") {
+          if (isBrandAdmin) {
             router.push("/submissions")
+          } else if (isCreator) {
+            router.push("/my-submissions")
           }
           break
         case 'escape':
@@ -113,7 +127,7 @@ export function Navigation() {
               <span className="text-xl font-bold text-primary">FanForge</span>
             </Link>
             
-            {user && (
+            {user && links.length > 0 && (
               <div className="hidden md:ml-10 md:flex md:space-x-8">
                 {links.map((link) => (
                   <Link
@@ -136,17 +150,27 @@ export function Navigation() {
 
           <div className="flex items-center space-x-4">
             <ThemeToggle />
-            {!user ? (
+            {loading ? (
+              <div className="hidden md:flex md:items-center">
+                <div className="h-8 w-8 animate-pulse rounded-full bg-muted"></div>
+              </div>
+            ) : !user ? (
               <div className="hidden md:flex md:space-x-2">
                 <Link href="/login">
-                  <Button variant="ghost">Sign In</Button>
+                  <Button variant="ghost" size="sm">Sign In</Button>
                 </Link>
                 <Link href="/register">
-                  <Button>Get Started</Button>
+                  <Button size="sm">Get Started</Button>
                 </Link>
               </div>
             ) : (
-              <div className="hidden md:flex md:items-center">
+              <div className="hidden md:flex md:items-center md:space-x-3">
+                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                  <span className="hidden lg:inline">
+                    {user.role === "creator" ? "Creator Mode" : user.role === "brand_admin" ? "Brand Admin" : "Welcome"}
+                  </span>
+                  <span className="font-medium text-foreground">{user.displayName || user.email.split('@')[0]}</span>
+                </div>
                 <UserDropdown />
               </div>
             )}
@@ -194,12 +218,39 @@ export function Navigation() {
                   </Link>
                 ))}
                 <div className="border-t pt-4">
-                  <div className="px-3 py-2 text-sm text-muted-foreground">
-                    {user.displayName || user.email}
+                  <div className="flex items-center px-3 py-2 space-x-3">
+                    <div className={`flex h-8 w-8 items-center justify-center rounded-full text-white text-xs font-semibold ${
+                      user.role === 'creator' ? 'bg-blue-500' : user.role === 'brand_admin' ? 'bg-purple-500' : 'bg-gray-500'
+                    }`}>
+                      {user.displayName ? user.displayName[0].toUpperCase() : user.email[0].toUpperCase()}
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-sm font-medium">
+                        {user.displayName || user.email.split('@')[0]}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {user.role === 'creator' ? 'Creator' : user.role === 'brand_admin' ? 'Brand Admin' : 'User'}
+                      </div>
+                    </div>
                   </div>
-                  <Button variant="outline" size="sm" className="mx-3" onClick={handleSignOut} disabled={loading}>
-                    Sign Out
-                  </Button>
+                  <div className="px-3 space-y-2">
+                    <Link href="/profile" onClick={() => setMobileMenuOpen(false)}>
+                      <Button variant="ghost" size="sm" className="w-full justify-start">
+                        <User className="mr-2 h-4 w-4" />
+                        Profile
+                      </Button>
+                    </Link>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full justify-start" 
+                      onClick={handleSignOut} 
+                      disabled={loading}
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Sign Out
+                    </Button>
+                  </div>
                 </div>
               </>
             ) : (

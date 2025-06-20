@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useRouter } from "next/navigation"
@@ -16,7 +16,7 @@ type LoginForm = z.infer<typeof loginSchema>
 
 export default function LoginPage() {
   const [error, setError] = useState<string>("")
-  const { signIn, loading } = useAuth()
+  const { signIn, loading, user } = useAuth()
   const router = useRouter()
 
   const {
@@ -27,13 +27,20 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   })
 
+  // Redirect user based on role after successful login
+  useEffect(() => {
+    if (user && !loading) {
+      const redirectPath = user.role === "creator" ? "/discover" : "/dashboard"
+      router.push(redirectPath)
+    }
+  }, [user, loading, router])
+
   const onSubmit = async (data: LoginForm) => {
     try {
       setError("")
       await signIn(data)
-      // Redirect based on user role - middleware will handle this automatically
-      // but we can specify a default
-      router.push("/dashboard")
+      // The auth context will update with user info, 
+      // and we'll redirect in a useEffect when user changes
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred during login")
     }

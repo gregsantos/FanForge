@@ -1,6 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { authClient, authListeners, type AuthUser, type RegisterData, type LoginData } from '@/lib/services/auth'
 
 interface AuthContextType {
@@ -30,6 +31,7 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
+  const router = useRouter()
 
   useEffect(() => {
     // Get initial user
@@ -81,6 +83,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       await authClient.signOut()
       setUser(null)
       setLoading(false)
+      // Redirect to home page after successful logout
+      router.push('/')
     } catch (error) {
       setLoading(false)
       throw error
